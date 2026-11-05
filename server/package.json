@@ -6,8 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "recover": "node recover_data.js",
-    "seed": "node seed.js && node seedPackages.js",
+"recover": "node recover_data.js",
+    "seed": "node seed.js && node seedPackages.js && node seedServices.js",
     "seed:destinations": "node seed.js",
     "seed:packages": "node seedPackages.js"
   },
