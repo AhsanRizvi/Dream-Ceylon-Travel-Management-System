@@ -2,10 +2,30 @@ const Destination = require('../models/Destination');
 
 exports.getDestinations = async (req, res) => {
   try {
-    const destinations = await Destination.find();
+    const { category, district, search } = req.query;
+    let filter = {};
+
+    if (category && category !== 'All') {
+      filter.category = new RegExp(`^${category}$`, 'i');
+    }
+    if (district && district !== 'All') {
+      filter.district = new RegExp(`^${district}$`, 'i');
+    }
+    if (search) {
+      const searchRegex = new RegExp(search.trim(), 'i');
+      filter.$or = [
+        { name: searchRegex },
+        { district: searchRegex },
+        { category: searchRegex },
+        { description: searchRegex }
+      ];
+    }
+
+    const destinations = await Destination.find(filter);
     res.status(200).json({ success: true, count: destinations.length, data: destinations });
   } catch (err) {
-    res.status(400).json({ success: false, error: err.message });
+    console.error('Error in getDestinations:', err);
+    res.status(500).json({ success: false, error: err.message });
   }
 };
 

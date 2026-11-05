@@ -1,27 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import PackageCard from '../components/PackageCard';
-import { Car, Home, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Car, Home, Sparkles } from 'lucide-react';
 
 const Packages = () => {
   const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchPackages = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await api.get('/packages');
+      const data = res.data?.data || res.data || [];
+      // Ensure consistent order: Basic -> Standard -> Premium
+      const order = { Basic: 1, Standard: 2, Premium: 3 };
+      data.sort((a, b) => (order[a.packageName] || 9) - (order[b.packageName] || 9));
+      setPackages(data);
+    } catch (err) {
+      console.error('Failed to fetch packages:', err);
+      setError(err.response?.data?.error || err.message || 'Failed to load tour packages.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchPackages = async () => {
-      try {
-        const res = await api.get('/packages');
-        const data = res.data?.data || res.data || [];
-        // Ensure consistent order: Basic -> Standard -> Premium
-        const order = { Basic: 1, Standard: 2, Premium: 3 };
-        data.sort((a, b) => (order[a.packageName] || 9) - (order[b.packageName] || 9));
-        setPackages(data);
-      } catch (err) {
-        console.error('Failed to fetch packages:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchPackages();
   }, []);
 
@@ -68,14 +73,38 @@ const Packages = () => {
         </div>
       </div>
 
-      {/* Packages Grid */}
+      {/* Packages Grid / States */}
       {loading ? (
-        <div className="flex justify-center items-center py-20">
+        <div className="flex flex-col justify-center items-center py-20 space-y-3">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900"></div>
+          <p className="text-sm text-gray-500 font-medium">Loading tour packages...</p>
+        </div>
+      ) : error ? (
+        <div className="text-center py-12 px-6 bg-red-50 rounded-2xl border border-red-200 max-w-xl mx-auto mb-8">
+          <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600 font-bold text-xl">
+            !
+          </div>
+          <h3 className="text-xl font-bold text-red-900 mb-2">Unable to Load Packages</h3>
+          <p className="text-red-700 text-sm mb-6">{error}</p>
+          <button
+            onClick={fetchPackages}
+            className="bg-blue-900 hover:bg-blue-800 text-white font-medium px-6 py-2.5 rounded-lg shadow transition-colors"
+          >
+            Try Again
+          </button>
         </div>
       ) : packages.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
-          <p className="text-gray-500">No packages available at the moment.</p>
+        <div className="text-center py-16 bg-white rounded-2xl border border-gray-100 max-w-xl mx-auto">
+          <p className="text-gray-700 text-lg font-semibold mb-2">No packages found in database.</p>
+          <p className="text-gray-500 text-sm mb-6">
+            The packages collection is currently empty. Run the safe recovery script to restore package tiers.
+          </p>
+          <button
+            onClick={fetchPackages}
+            className="bg-blue-900 hover:bg-blue-800 text-white text-sm font-medium px-5 py-2.5 rounded-lg transition-colors shadow-sm"
+          >
+            Refresh
+          </button>
         </div>
       ) : (
         <div className="grid md:grid-cols-3 gap-8 items-stretch">
