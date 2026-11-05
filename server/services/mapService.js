@@ -66,10 +66,10 @@ const calculateRoute = async (originLat, originLng, destLat, destLng, vehicleTyp
 const nearbyDestinations = async (lat, lng, radiusInKm = 50) => {
   try {
     const allDestinations = await Destination.find({});
-    
+
     // Manual haversine formula to find nearby since we don't have GeoJSON index setup yet
     const toRad = (value) => (value * Math.PI) / 180;
-    
+
     const nearby = allDestinations.filter(dest => {
       const R = 6371; // km
       const dLat = toRad(dest.latitude - lat);
@@ -78,8 +78,8 @@ const nearbyDestinations = async (lat, lng, radiusInKm = 50) => {
       const l2 = toRad(dest.latitude);
 
       const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(l1) * Math.cos(l2); 
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)); 
+        Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(l1) * Math.cos(l2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       const d = R * c;
       return d <= radiusInKm;
     });

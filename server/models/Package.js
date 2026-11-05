@@ -10,6 +10,8 @@ const PackageSchema = new mongoose.Schema({
   badge: { type: String },
   tagline: { type: String },
   description: { type: String },
+  image: { type: String },
+  imageUrl: { type: String },
   baseCharge: { type: Number, required: true },
   includedFacilities: [{ type: String }],
   excludedFacilities: [{ type: String }],

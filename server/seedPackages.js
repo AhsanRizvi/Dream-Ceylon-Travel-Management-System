@@ -1,10 +1,10 @@
+const path = require('path');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const Package = require('./models/Package');
 const connectDB = require('./config/db');
 
-dotenv.config();
-connectDB();
+dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 const packages = [
   {
@@ -13,6 +13,8 @@ const packages = [
     tagline: 'Standard transport arrangements for independent explorers',
     description: 'Designed specifically for tourists who only require standard transport facilities across Sri Lanka. Gives you complete freedom to arrange your own lodging, meals, and daily activities independently.',
     baseCharge: 85,
+    image: 'https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&w=1200&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&w=1200&q=80',
     features: {
       transport: 'Standard Air-Conditioned Vehicle with Licensed Chauffeur',
       accommodation: 'Not Included (Self-arranged by tourist)',
@@ -50,6 +52,8 @@ const packages = [
     tagline: 'Comfortable hotel stays and standard transport without mandatory meals',
     description: 'Combines comfortable hotel accommodations and reliable standard transport with essential non-food travel amenities. Food services are excluded by default so you can dine where you wish. Tour guides can be added as an optional additional service.',
     baseCharge: 180,
+    image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1200&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1200&q=80',
     features: {
       transport: 'Dedicated Standard Air-Conditioned Vehicle with Chauffeur',
       accommodation: 'Handpicked 3 to 4-Star Hotels and Eco-Lodge Stays',
@@ -71,7 +75,7 @@ const packages = [
       'Optional activity entry fees and safari jeep rentals'
     ],
     allowGuideAddon: true,
-    guideAddonPrice: 45, // $45/day optional tour guide service
+    guideAddonPrice: 45,
     allowMealSelection: false,
     allowGuideSelection: false,
     mealOptions: [],
@@ -87,6 +91,8 @@ const packages = [
     tagline: 'All-inclusive luxury with curated dining and specialist guides',
     description: 'The pinnacle of Sri Lankan hospitality. Enjoy luxury 5-star resort accommodations, executive transport, all gourmet meals tailored to your taste, and your choice of a dedicated specialist tour guide.',
     baseCharge: 350,
+    image: 'https://images.unsplash.com/photo-1582719508461-905c673771fd?auto=format&fit=crop&w=1200&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1582719508461-905c673771fd?auto=format&fit=crop&w=1200&q=80',
     features: {
       transport: 'Luxury Air-Conditioned SUV / Executive Van with VIP Chauffeur',
       accommodation: '5-Star Luxury Resorts, Heritage Villas & Tea Bungalows',
@@ -107,7 +113,7 @@ const packages = [
       'International airfares and visa processing fees',
       'Personal shopping and discretionary gratuities'
     ],
-    allowGuideAddon: false, // Already included
+    allowGuideAddon: false,
     guideAddonPrice: 0,
     allowMealSelection: true,
     allowGuideSelection: true,
@@ -174,9 +180,18 @@ const packages = [
 
 const seedPackages = async () => {
   try {
-    await Package.deleteMany();
-    await Package.insertMany(packages);
-    console.log('Packages Seeded Successfully with Updated Rules!');
+    await connectDB();
+    // Non-destructive safe upsert: only insert missing or update missing fields
+    for (const p of packages) {
+      await Package.findOneAndUpdate(
+        { packageName: p.packageName },
+        { $set: p },
+        { upsert: true, new: true }
+      );
+    }
+    const count = await Package.countDocuments();
+    console.log(`Packages Seeded Safely with Updated Rules! Total in DB: ${count}`);
+    await mongoose.connection.close();
     process.exit(0);
   } catch (error) {
     console.error(`Error: ${error.message}`);
