@@ -1,7 +1,16 @@
 const express = require('express');
-const { getDestinations, getDestinationById, createDestination, updateDestination, deleteDestination } = require('../controllers/destinationController');
+const { 
+  getDestinations, 
+  getDestinationById, 
+  getFilterMetadata,
+  createDestination, 
+  updateDestination, 
+  deleteDestination 
+} = require('../controllers/destinationController');
 const { protect, authorize } = require('../middlewares/authMiddleware');
 const router = express.Router();
+
+router.get('/meta/filters', getFilterMetadata);
 
 router.route('/')
   .get(getDestinations)
