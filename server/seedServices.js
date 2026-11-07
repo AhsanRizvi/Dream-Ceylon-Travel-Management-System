@@ -93,7 +93,8 @@ const seedServicesAndReviews = async () => {
           bio: 'National Cultural & UNESCO Heritage Historian with 12+ years guiding across the Cultural Triangle and Kandy.',
           serviceAreas: ['Kandy', 'Sigiriya', 'Anuradhapura', 'Polonnaruwa'],
           languages: ['English', 'German', 'Sinhala'],
-          dailyRate: 55,
+          currency: 'LKR',
+          dailyRate: 16500,
           availability: true,
           rating: 0,
           reviewCount: 0
@@ -104,7 +105,8 @@ const seedServicesAndReviews = async () => {
           bio: 'Certified Wildlife Tracker & Hill Country Trekking Specialist covering Yala, Ella, and Horton Plains.',
           serviceAreas: ['Yala', 'Ella', 'Nuwara Eliya', 'Mirissa'],
           languages: ['English', 'French', 'Sinhala'],
-          dailyRate: 60,
+          currency: 'LKR',
+          dailyRate: 18000,
           availability: true,
           rating: 0,
           reviewCount: 0
@@ -115,13 +117,23 @@ const seedServicesAndReviews = async () => {
           bio: 'Southern Coast, Galle Fort Architecture & Culinary Tour Specialist with comfortable chauffeur expertise.',
           serviceAreas: ['Galle', 'Mirissa', 'Bentota', 'Colombo'],
           languages: ['English', 'Spanish', 'Sinhala'],
-          dailyRate: 45,
+          currency: 'LKR',
+          dailyRate: 13500,
           availability: true,
           rating: 0,
           reviewCount: 0
         }
       ]);
-      console.log('Seeded 3 Tour Guides.');
+      console.log('Seeded 3 Tour Guides in LKR.');
+    } else {
+      // Ensure existing guides have LKR rates
+      for (const g of guides) {
+        if (g.dailyRate < 1000) {
+          g.dailyRate = Math.round(g.dailyRate * 300);
+          g.currency = 'LKR';
+          await g.save();
+        }
+      }
     }
 
     // 3. Seed Hotels if none exist
@@ -134,11 +146,12 @@ const seedServicesAndReviews = async () => {
           location: 'Kandy',
           description: 'Tranquil riverside 4-star resort surrounded by misty hills and Mahaweli River views.',
           rooms: [
-            { type: 'Superior River View', capacity: 2, count: 15 },
-            { type: 'Deluxe Family Suite', capacity: 4, count: 6 }
+            { type: 'Superior River View', capacity: 2, count: 15, pricePerNight: 43500 },
+            { type: 'Deluxe Family Suite', capacity: 4, count: 6, pricePerNight: 58500 }
           ],
           facilities: ['Infinity Pool', 'Free Wi-Fi', 'Ayurvedic Spa', 'Riverside Dining'],
-          pricePerNight: 145,
+          currency: 'LKR',
+          pricePerNight: 43500,
           availability: true,
           rating: 0,
           reviewCount: 0
@@ -149,11 +162,12 @@ const seedServicesAndReviews = async () => {
           location: 'Ella',
           description: 'Luxury boutique eco-chalets nestled in a scenic tea estate overlooking Little Adam’s Peak.',
           rooms: [
-            { type: 'Deluxe Tea Chalet', capacity: 2, count: 10 },
-            { type: 'Grand Mountain Villa', capacity: 3, count: 4 }
+            { type: 'Deluxe Tea Chalet', capacity: 2, count: 10, pricePerNight: 63000 },
+            { type: 'Grand Mountain Villa', capacity: 3, count: 4, pricePerNight: 84000 }
           ],
           facilities: ['Mountain View Deck', 'Organic Restaurant', 'Free Wi-Fi', 'Tea Tour'],
-          pricePerNight: 210,
+          currency: 'LKR',
+          pricePerNight: 63000,
           availability: true,
           rating: 0,
           reviewCount: 0
@@ -164,10 +178,11 @@ const seedServicesAndReviews = async () => {
           location: 'Galle',
           description: 'Restored 18th-century Dutch colonial mansion inside the UNESCO Galle Fort ramparts.',
           rooms: [
-            { type: 'Colonial Courtyard Suite', capacity: 2, count: 8 }
+            { type: 'Colonial Courtyard Suite', capacity: 2, count: 8, pricePerNight: 49500 }
           ],
           facilities: ['Courtyard Pool', 'Free Wi-Fi', 'Heritage Library', 'Seafood Bistro'],
-          pricePerNight: 165,
+          currency: 'LKR',
+          pricePerNight: 49500,
           availability: true,
           rating: 0,
           reviewCount: 0
@@ -178,16 +193,25 @@ const seedServicesAndReviews = async () => {
           location: 'Sigiriya',
           description: 'Nature-immersive eco-lodge with direct views of the iconic Sigiriya Lion Rock Fortress.',
           rooms: [
-            { type: 'Garden Eco Cabin', capacity: 2, count: 12 }
+            { type: 'Garden Eco Cabin', capacity: 2, count: 12, pricePerNight: 28500 }
           ],
           facilities: ['Birdwatching Trails', 'Outdoor Pool', 'Village Curry Dining'],
-          pricePerNight: 95,
+          currency: 'LKR',
+          pricePerNight: 28500,
           availability: true,
           rating: 0,
           reviewCount: 0
         }
       ]);
-      console.log('Seeded 4 Partner Hotels.');
+      console.log('Seeded 4 Partner Hotels in LKR.');
+    } else {
+      for (const h of hotels) {
+        if (h.pricePerNight < 1000) {
+          h.pricePerNight = Math.round(h.pricePerNight * 300);
+          h.currency = 'LKR';
+          await h.save();
+        }
+      }
     }
 
     // 4. Seed Sample Completed Bookings & Reviews if no reviews exist yet

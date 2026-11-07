@@ -14,8 +14,10 @@ import {
 import api from '../services/api';
 import StarRating from '../components/StarRating';
 import ReviewList from '../components/ReviewList';
+import { useCurrency } from '../context/CurrencyContext';
 
 const Hotels = () => {
+  const { formatPrice, formatDualPrice } = useCurrency();
   const [hotels, setHotels] = useState([]);
   const [popularHotels, setPopularHotels] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -129,7 +131,7 @@ const Hotels = () => {
                       #{idx + 1} Guest Pick
                     </span>
                     <span className="text-xs text-blue-200 font-semibold">
-                      ${h.pricePerNight}/night
+                      {formatPrice(h.pricePerNightLKR || h.pricePerNight)}/night
                     </span>
                   </div>
                   <h3 className="font-bold text-base mt-2">{h.name}</h3>
@@ -221,7 +223,7 @@ const Hotels = () => {
                     <h3 className="text-2xl font-extrabold drop-shadow-xs">{hotel.name}</h3>
                     <div className="text-right">
                       <span className="text-2xl font-extrabold text-amber-300">
-                        ${hotel.pricePerNight}
+                        {formatPrice(hotel.pricePerNightLKR || hotel.pricePerNight)}
                       </span>
                       <span className="block text-[11px] text-blue-100">per night</span>
                     </div>

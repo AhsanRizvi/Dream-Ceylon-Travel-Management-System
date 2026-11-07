@@ -1,17 +1,12 @@
 import React, { useContext } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import { Map, LogOut, User } from 'lucide-react';
+import { Map } from 'lucide-react';
 import ProfileDropdown from './ProfileDropdown';
+import CurrencySelector from './CurrencySelector';
 
 const Navbar = () => {
-  const { user, logout } = useContext(AuthContext);
-  const navigate = useNavigate();
-
-  const handleLogout = () => {
-    logout();
-    navigate('/');
-  };
+  const { user } = useContext(AuthContext);
 
   return (
     <nav className="bg-blue-900 text-white shadow-lg sticky top-0 z-50">
@@ -23,19 +18,22 @@ const Navbar = () => {
               Dream Ceylon
             </Link>
           </div>
-          <div className="flex items-center space-x-6">
-            <Link to="/destinations" className="hover:text-yellow-400 transition">Destinations</Link>
-            <Link to="/planner" className="hover:text-yellow-400 transition">Smart Planner</Link>
-            <Link to="/packages" className="hover:text-yellow-400 transition">Packages</Link>
-            <Link to="/hotels" className="hover:text-yellow-400 transition">Hotels</Link>
-            <Link to="/guides" className="hover:text-yellow-400 transition">Guides</Link>
-            
+          <div className="flex items-center space-x-5">
+            <Link to="/destinations" className="hover:text-yellow-400 transition text-sm font-medium">Destinations</Link>
+            <Link to="/planner" className="hover:text-yellow-400 transition text-sm font-medium">Smart Planner</Link>
+            <Link to="/packages" className="hover:text-yellow-400 transition text-sm font-medium">Packages</Link>
+            <Link to="/hotels" className="hover:text-yellow-400 transition text-sm font-medium">Hotels</Link>
+            <Link to="/guides" className="hover:text-yellow-400 transition text-sm font-medium">Guides</Link>
+
+            {/* Module 8 Global Currency Selector (Default: LKR) */}
+            <CurrencySelector />
+
             {user ? (
               <ProfileDropdown />
             ) : (
-              <div className="flex space-x-4">
-                <Link to="/login" className="hover:text-yellow-400 transition">Login</Link>
-                <Link to="/register" className="bg-green-600 hover:bg-green-500 px-4 py-2 rounded-md transition font-medium">Sign Up</Link>
+              <div className="flex items-center space-x-3">
+                <Link to="/login" className="hover:text-yellow-400 transition text-sm font-medium">Login</Link>
+                <Link to="/register" className="bg-green-600 hover:bg-green-500 px-3.5 py-2 rounded-md transition text-sm font-medium">Sign Up</Link>
               </div>
             )}
           </div>

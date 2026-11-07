@@ -6,6 +6,7 @@ const GuideSchema = new mongoose.Schema({
   bio: { type: String },
   serviceAreas: [{ type: String }],
   languages: [{ type: String }],
+  currency: { type: String, default: 'LKR' },
   dailyRate: { type: Number, required: true },
   availability: { type: Boolean, default: true },
   rating: { type: Number, min: 0, max: 5, default: 0 },

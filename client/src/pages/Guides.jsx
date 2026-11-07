@@ -14,8 +14,10 @@ import {
 import api from '../services/api';
 import StarRating from '../components/StarRating';
 import ReviewList from '../components/ReviewList';
+import { useCurrency } from '../context/CurrencyContext';
 
 const Guides = () => {
+  const { formatPrice } = useCurrency();
   const [guides, setGuides] = useState([]);
   const [popularGuides, setPopularGuides] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -134,7 +136,7 @@ const Guides = () => {
                       #{idx + 1} Top Rated
                     </span>
                     <span className="text-xs text-blue-200 font-semibold">
-                      ${g.dailyRate}/day
+                      {formatPrice(g.dailyRateLKR || g.dailyRate)}/day
                     </span>
                   </div>
                   <h3 className="font-bold text-base mt-2">{getGuideDisplayName(g)}</h3>
@@ -241,7 +243,7 @@ const Guides = () => {
 
                     <div className="text-right">
                       <span className="text-2xl font-extrabold text-blue-900">
-                        ${guide.dailyRate}
+                        {formatPrice(guide.dailyRateLKR || guide.dailyRate)}
                       </span>
                       <span className="block text-xs text-gray-500">per day</span>
                     </div>
