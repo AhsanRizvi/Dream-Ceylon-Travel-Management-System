@@ -1,4 +1,7 @@
+const mongoose = require('mongoose');
 const mapService = require('../services/mapService');
+const TourPlan = require('../models/TourPlan');
+const Destination = require('../models/Destination');
 
 /**
  * Module 2: Maps, Routes and Transportation
@@ -202,6 +205,200 @@ exports.getTrafficStatus = async (req, res) => {
     return res.status(500).json({
       success: false,
       error: 'Failed to retrieve traffic status.'
+    });
+  }
+};
+
+// 7. Unified Route Calculation Endpoint (POST /api/routes/calculate)
+exports.calculateRouteEndpoint = async (req, res) => {
+  try {
+    const {
+      startLocation,
+      destinations,
+      destinationIds,
+      originLat,
+      originLng,
+      destLat,
+      destLng,
+      vehicleType = 'car',
+      alternatives = true,
+      optimizeOrder = false,
+      tourPlanId = null
+    } = req.body || {};
+
+    // Case A: Point-to-point coordinates provided directly
+    if (
+      originLat !== undefined &&
+      originLng !== undefined &&
+      destLat !== undefined &&
+      destLng !== undefined &&
+      (!destinations || destinations.length === 0) &&
+      (!destinationIds || destinationIds.length === 0)
+    ) {
+      const oLat = parseFloat(originLat);
+      const oLng = parseFloat(originLng);
+      const dLat = parseFloat(destLat);
+      const dLng = parseFloat(destLng);
+
+      if (isNaN(oLat) || isNaN(oLng) || isNaN(dLat) || isNaN(dLng)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Coordinates must be valid numerical floating-point numbers.'
+        });
+      }
+
+      const routeResult = await mapService.calculateRoute(
+        oLat,
+        oLng,
+        dLat,
+        dLng,
+        vehicleType,
+        Boolean(alternatives)
+      );
+
+      return res.status(200).json({
+        success: true,
+        routeId: routeResult.routeId,
+        data: routeResult
+      });
+    }
+
+    // Case B: Multi-destination or destinationIds array provided
+    let resolvedDestinations = Array.isArray(destinations) ? [...destinations] : [];
+    if (resolvedDestinations.length === 0 && Array.isArray(destinationIds) && destinationIds.length > 0) {
+      const validIds = destinationIds.filter((id) => mongoose.Types.ObjectId.isValid(id));
+      const docs = await Destination.find({ _id: { $in: validIds } }).lean();
+      const docMap = new Map(docs.map((d) => [d._id.toString(), d]));
+      resolvedDestinations = validIds.map((id) => docMap.get(id.toString())).filter(Boolean);
+    }
+
+    if (resolvedDestinations.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Please provide at least one destination or valid origin/destination coordinates.'
+      });
+    }
+
+    // Resolve startLocation (defaults to Bandaranaike International Airport CMB if omitted)
+    const originObj =
+      startLocation && startLocation.latitude !== undefined && startLocation.longitude !== undefined
+        ? startLocation
+        : mapService.getPresetStartLocations()[0];
+
+    if (optimizeOrder && resolvedDestinations.length > 1) {
+      resolvedDestinations = mapService.optimizeDestinationOrder(originObj, resolvedDestinations);
+    }
+
+    const multiResult = await mapService.calculateMultiRoute({
+      startLocation: originObj,
+      destinations: resolvedDestinations,
+      vehicleType,
+      includeAlternatives: Boolean(alternatives)
+    });
+
+    // Optionally persist routeData onto a TourPlan if tourPlanId is supplied
+    if (tourPlanId && mongoose.Types.ObjectId.isValid(tourPlanId)) {
+      await TourPlan.findByIdAndUpdate(tourPlanId, {
+        $set: {
+          startLocation: originObj,
+          routeData: {
+            routeId: multiResult.routeId,
+            totalDistanceKm: multiResult.totalDistanceKm,
+            totalDurationFormatted: multiResult.totalDurationFormatted,
+            vehicle: multiResult.vehicle,
+            legs: multiResult.legs,
+            calculatedAt: new Date()
+          }
+        }
+      }).catch(() => {});
+    }
+
+    return res.status(200).json({
+      success: true,
+      routeId: multiResult.routeId,
+      optimizedOrder: Boolean(optimizeOrder),
+      data: multiResult
+    });
+  } catch (err) {
+    console.error('MapController.calculateRouteEndpoint error:', err.message);
+    return res.status(500).json({
+      success: false,
+      error: err.message || 'Failed to calculate route.'
+    });
+  }
+};
+
+// 8. Route Alternatives Endpoint (POST /api/routes/alternatives)
+exports.calculateAlternativesEndpoint = async (req, res) => {
+  try {
+    req.body = { ...(req.body || {}), alternatives: true };
+    return exports.calculateRouteEndpoint(req, res);
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: err.message || 'Failed to calculate route alternatives.'
+    });
+  }
+};
+
+// 9. Get Saved or Cached Route by ID (GET /api/routes/:id)
+exports.getRouteById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ success: false, error: 'Route ID or TourPlan ID is required.' });
+    }
+
+    // 1. Check in-memory calculated route cache
+    const cached = mapService.getCachedRouteById(id);
+    if (cached) {
+      return res.status(200).json({
+        success: true,
+        source: 'routeCache',
+        data: cached
+      });
+    }
+
+    // 2. If valid MongoDB ObjectId, check TourPlan collection
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      const plan = await TourPlan.findById(id).populate('stops').lean();
+      if (plan) {
+        if (plan.routeData && plan.routeData.totalDistanceKm) {
+          return res.status(200).json({
+            success: true,
+            source: 'TourPlan',
+            tourPlanId: plan._id,
+            data: plan.routeData
+          });
+        }
+        // Dynamically compute route for the TourPlan's stops if not yet computed
+        if (Array.isArray(plan.stops) && plan.stops.length > 0) {
+          const originObj = plan.startLocation || mapService.getPresetStartLocations()[0];
+          const computed = await mapService.calculateMultiRoute({
+            startLocation: originObj,
+            destinations: plan.stops,
+            vehicleType: (plan.transportType || 'Car').toLowerCase(),
+            includeAlternatives: true
+          });
+          return res.status(200).json({
+            success: true,
+            source: 'TourPlanDynamicCalculation',
+            tourPlanId: plan._id,
+            data: computed
+          });
+        }
+      }
+    }
+
+    return res.status(404).json({
+      success: false,
+      error: `No cached route or TourPlan found for ID "${id}".`
+    });
+  } catch (err) {
+    console.error('MapController.getRouteById error:', err.message);
+    return res.status(500).json({
+      success: false,
+      error: err.message || 'Failed to retrieve route by ID.'
     });
   }
 };

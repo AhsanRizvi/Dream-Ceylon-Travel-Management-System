@@ -5,7 +5,10 @@ const {
   calculateMultiRoute, 
   getNearby, 
   getPresets, 
-  getTrafficStatus 
+  getTrafficStatus,
+  calculateRouteEndpoint,
+  calculateAlternativesEndpoint,
+  getRouteById
 } = require('../controllers/mapController');
 
 /**
@@ -13,7 +16,7 @@ const {
  * Student Reg: SEU/IS/22/ICT/037
  * University: South Eastern University of Sri Lanka
  * 
- * Express Router for Map and Route Operations
+ * Express Router for Map and Route Operations (Mounted at /api/maps and /api/routes)
  */
 const router = express.Router();
 
@@ -24,5 +27,10 @@ router.get('/multi-route', calculateMultiRoute);
 router.get('/nearby', getNearby);
 router.get('/presets', getPresets);
 router.get('/traffic-status', getTrafficStatus);
+
+// Section 6 Route Calculation & Alternatives Endpoints
+router.post('/calculate', calculateRouteEndpoint);
+router.post('/alternatives', calculateAlternativesEndpoint);
+router.get('/:id', getRouteById);
 
 module.exports = router;

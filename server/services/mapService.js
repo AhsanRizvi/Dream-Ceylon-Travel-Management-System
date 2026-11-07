@@ -108,8 +108,12 @@ const VEHICLE_CATALOG = {
     capacity: '1 - 3 Passengers',
     luggage: '2 - 3 Large Bags',
     osrmProfile: 'driving',
+    googleTravelMode: 'driving',
+    terrainPaceMultiplier: 1.0,
+    avgSpeedKmh: 45,
     description: 'Comfortable air-conditioned private sedan suitable for solo, couples, and small family travel.',
-    providerNotes: 'Public OSRM engine routes car via the standard motor-vehicle "driving" profile.'
+    providerNotes: 'Public OSRM engine routes car via the standard motor-vehicle "driving" profile. Google Maps Platform uses the "driving" mode.',
+    terrainPaceNote: 'Baseline passenger sedan speed profile (1.00x) across Sri Lankan national highways and expressways.'
   },
   van: {
     key: 'van',
@@ -118,8 +122,12 @@ const VEHICLE_CATALOG = {
     capacity: '4 - 8 Passengers',
     luggage: '6 - 8 Large Bags',
     osrmProfile: 'driving',
+    googleTravelMode: 'driving',
+    terrainPaceMultiplier: 1.12,
+    avgSpeedKmh: 40,
     description: 'Spacious passenger van ideal for families, groups, and multi-day sightseeing across island terrains.',
-    providerNotes: 'Public OSRM engine routes vans via the unified "driving" road network profile. Dedicated commercial van axle/speed profiles require an enterprise OSRM or OpenRouteService instance.'
+    providerNotes: 'Public OSRM engine routes vans via the unified "driving" road network profile. Dedicated commercial van axle/speed profiles require an enterprise OSRM or OpenRouteService instance.',
+    terrainPaceNote: 'Includes +12% Sri Lankan hill-country & winding curve pace adjustment for high-roof group passenger vans.'
   },
   motorcycle: {
     key: 'motorcycle',
@@ -128,9 +136,85 @@ const VEHICLE_CATALOG = {
     capacity: '1 - 2 Riders',
     luggage: '1 - 2 Backpacks / Panniers',
     osrmProfile: 'driving',
+    googleTravelMode: 'driving',
+    terrainPaceMultiplier: 0.92,
+    avgSpeedKmh: 49,
     description: 'Agile adventure travel suitable for scenic coastal and highland roads.',
-    providerNotes: 'Public OSRM demo engine does not host an isolated motorcycle routing endpoint. Calculations use the provider\'s unified "driving" road network.'
+    providerNotes: 'Public OSRM demo engine does not host an isolated motorcycle routing endpoint. Calculations use the provider\'s unified "driving" road network.',
+    terrainPaceNote: 'Includes -8% agile two-wheeler transit adjustment across Sri Lankan town corridors and mountain switchbacks.'
   }
+};
+
+// In-memory cache of calculated routes so GET /api/routes/:id can retrieve recent calculations
+const routeCalculationCache = new Map();
+
+const cacheCalculatedRoute = (routeData) => {
+  const routeId = `route_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const entry = {
+    routeId,
+    createdAt: new Date().toISOString(),
+    ...routeData
+  };
+  routeCalculationCache.set(routeId, entry);
+  if (routeCalculationCache.size > 100) {
+    const firstKey = routeCalculationCache.keys().next().value;
+    routeCalculationCache.delete(firstKey);
+  }
+  return entry;
+};
+
+const getCachedRouteById = (routeId) => {
+  return routeCalculationCache.get(routeId) || null;
+};
+
+/**
+ * Helper: Check whether a real Google Maps API key is configured in environment
+ */
+const hasValidGoogleMapsKey = () => {
+  const key = process.env.GOOGLE_MAPS_API_KEY;
+  return Boolean(
+    key &&
+    typeof key === 'string' &&
+    key.trim().length > 10 &&
+    !key.includes('your_google_maps_api_key')
+  );
+};
+
+/**
+ * Helper: Decode Google Maps encoded polyline string into Leaflet [lat, lng] array
+ */
+const decodeGooglePolyline = (encoded = '') => {
+  const points = [];
+  let index = 0;
+  const len = encoded.length;
+  let lat = 0;
+  let lng = 0;
+
+  while (index < len) {
+    let b;
+    let shift = 0;
+    let result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    const dlat = (result & 1) !== 0 ? ~(result >> 1) : result >> 1;
+    lat += dlat;
+
+    shift = 0;
+    result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    const dlng = (result & 1) !== 0 ? ~(result >> 1) : result >> 1;
+    lng += dlng;
+
+    points.push([lat / 1e5, lng / 1e5]);
+  }
+  return points;
 };
 
 /**
@@ -199,17 +283,27 @@ const generateInterpolatedRoute = (originLat, originLng, destLat, destLng, segme
  * Never fakes live traffic. Checks if an external traffic-enabled provider key is configured in env.
  */
 const getTrafficStatus = () => {
-  const hasLiveTrafficProvider = Boolean(
-    process.env.TOMTOM_API_KEY || 
-    process.env.GOOGLE_MAPS_API_KEY || 
-    process.env.MAPBOX_ACCESS_TOKEN
+  const hasGoogleKey = hasValidGoogleMapsKey();
+  const hasTomTomKey = Boolean(
+    process.env.TOMTOM_API_KEY &&
+    !process.env.TOMTOM_API_KEY.includes('your_')
   );
+  const hasMapboxKey = Boolean(
+    process.env.MAPBOX_ACCESS_TOKEN &&
+    !process.env.MAPBOX_ACCESS_TOKEN.includes('your_')
+  );
+  const hasLiveTrafficProvider = hasGoogleKey || hasTomTomKey || hasMapboxKey;
 
   return {
     hasLiveTraffic: hasLiveTrafficProvider,
-    provider: hasLiveTrafficProvider ? 'External Traffic Provider' : 'Public OpenStreetMap / OSRM',
+    isGuaranteedRealTime: false,
+    provider: hasGoogleKey
+      ? 'Google Maps Platform (Traffic-Aware Routing)'
+      : hasLiveTrafficProvider
+      ? 'External Traffic Provider'
+      : 'Public OpenStreetMap / OSRM',
     statusMessage: hasLiveTrafficProvider
-      ? 'Live traffic data is active and factored into transit calculations.'
+      ? 'Estimated traffic-aware travel duration is enabled via configured routing provider. Note: Traffic-aware durations are algorithmic estimates based on current and historical road conditions, not guaranteed arrival times.'
       : 'Live traffic information is currently unavailable on public OpenStreetMap/OSRM routing. Displaying standard algorithmic transit duration based on standard road network speed limits.'
   };
 };
@@ -336,6 +430,87 @@ const calculateRoute = async (originLat, originLng, destLat, destLng, vehicleTyp
   const vehicle = resolveVehicle(vehicleType);
   const trafficInfo = getTrafficStatus();
   const profile = vehicle.osrmProfile; // 'driving'
+  const paceMultiplier = vehicle.terrainPaceMultiplier || 1.0;
+
+  // 1. If a valid GOOGLE_MAPS_API_KEY is configured, attempt Google Directions API with traffic_model=best_guess
+  if (hasValidGoogleMapsKey()) {
+    try {
+      const gRes = await axios.get('https://maps.googleapis.com/maps/api/directions/json', {
+        params: {
+          origin: `${oLat},${oLng}`,
+          destination: `${dLat},${dLng}`,
+          mode: vehicle.googleTravelMode || 'driving',
+          alternatives: includeAlternatives ? 'true' : 'false',
+          departure_time: 'now',
+          traffic_model: 'best_guess',
+          region: 'lk',
+          key: process.env.GOOGLE_MAPS_API_KEY.trim()
+        },
+        timeout: 8000
+      });
+
+      if (gRes.data && gRes.data.status === 'OK' && Array.isArray(gRes.data.routes) && gRes.data.routes.length > 0) {
+        const routes = gRes.data.routes.map((r, index) => {
+          const leg = r.legs?.[0] || {};
+          const rawSeconds = leg.duration?.value || 0;
+          const trafficSeconds = leg.duration_in_traffic?.value || null;
+          const baseSeconds = trafficSeconds || rawSeconds;
+          const adjustedSeconds = Math.round(baseSeconds * paceMultiplier);
+          const leafletCoordinates = decodeGooglePolyline(r.overview_polyline?.points || '');
+          const geoJsonCoords = leafletCoordinates.map((pt) => [pt[1], pt[0]]);
+
+          return {
+            id: index,
+            label: index === 0 ? `Primary Route (${r.summary || 'Recommended'})` : `Alternative Route ${index} (${r.summary || 'Corridor'})`,
+            distanceMeters: leg.distance?.value || 0,
+            distanceKm: formatDistanceKm(leg.distance?.value || 0),
+            durationSeconds: adjustedSeconds,
+            durationFormatted: formatDurationText(adjustedSeconds),
+            rawEngineDurationSeconds: rawSeconds,
+            rawEngineDurationFormatted: formatDurationText(rawSeconds),
+            trafficDurationSeconds: trafficSeconds,
+            trafficDurationFormatted: trafficSeconds ? formatDurationText(trafficSeconds) : null,
+            coordinates: geoJsonCoords,
+            leafletCoordinates,
+            summary: r.summary || 'Google Maps Sri Lanka Route'
+          };
+        });
+
+        const primary = routes[0];
+        return cacheCalculatedRoute({
+          distance: primary.distanceMeters,
+          distanceKm: primary.distanceKm,
+          duration: primary.durationSeconds,
+          durationFormatted: primary.durationFormatted,
+          rawEngineDurationSeconds: primary.rawEngineDurationSeconds,
+          rawEngineDurationFormatted: primary.rawEngineDurationFormatted,
+          trafficDurationFormatted: primary.trafficDurationFormatted,
+          coordinates: primary.coordinates,
+          leafletCoordinates: primary.leafletCoordinates,
+          routes,
+          hasAlternatives: routes.length > 1,
+          alternativesCount: routes.length,
+          alternativesNote: routes.length > 1
+            ? `${routes.length} route corridors returned by Google Maps Directions API.`
+            : '1 optimal route corridor returned by Google Maps Directions API.',
+          vehicle: {
+            type: vehicle.key,
+            label: vehicle.label,
+            category: vehicle.category,
+            capacity: vehicle.capacity,
+            routingProfileUsed: vehicle.googleTravelMode,
+            terrainPaceMultiplier: paceMultiplier,
+            terrainPaceNote: vehicle.terrainPaceNote,
+            providerNotes: vehicle.providerNotes
+          },
+          traffic: trafficInfo,
+          provider: 'Google Maps Platform (Directions API)'
+        });
+      }
+    } catch (gErr) {
+      console.warn(`MapService - Google Maps Directions API fallback to OSRM (${gErr.message}).`);
+    }
+  }
 
   const osrmUrl = `http://router.project-osrm.org/route/v1/${profile}/${oLng},${oLat};${dLng},${dLat}`;
 
@@ -357,13 +532,16 @@ const calculateRoute = async (originLat, originLng, destLat, destLng, vehicleTyp
       const routes = response.data.routes.map((r, index) => {
         // OSRM coordinates are [lng, lat], map requires [lat, lng] for Leaflet
         const leafletCoordinates = r.geometry.coordinates.map(pt => [pt[1], pt[0]]);
+        const adjustedSeconds = Math.round(r.duration * paceMultiplier);
         return {
           id: index,
           label: index === 0 ? 'Primary Route (Recommended)' : `Alternative Route ${index}`,
           distanceMeters: r.distance,
           distanceKm: formatDistanceKm(r.distance),
-          durationSeconds: r.duration,
-          durationFormatted: formatDurationText(r.duration),
+          durationSeconds: adjustedSeconds,
+          durationFormatted: formatDurationText(adjustedSeconds),
+          rawEngineDurationSeconds: Math.round(r.duration),
+          rawEngineDurationFormatted: formatDurationText(r.duration),
           coordinates: r.geometry.coordinates, // GeoJSON [lng, lat]
           leafletCoordinates, // Leaflet [lat, lng]
           summary: r.legs?.[0]?.summary || `Route via Sri Lanka Highway Network`
@@ -372,11 +550,13 @@ const calculateRoute = async (originLat, originLng, destLat, destLng, vehicleTyp
 
       const primary = routes[0];
 
-      return {
+      return cacheCalculatedRoute({
         distance: primary.distanceMeters,
         distanceKm: primary.distanceKm,
         duration: primary.durationSeconds,
         durationFormatted: primary.durationFormatted,
+        rawEngineDurationSeconds: primary.rawEngineDurationSeconds,
+        rawEngineDurationFormatted: primary.rawEngineDurationFormatted,
         coordinates: primary.coordinates,
         leafletCoordinates: primary.leafletCoordinates,
         routes,
@@ -391,11 +571,13 @@ const calculateRoute = async (originLat, originLng, destLat, destLng, vehicleTyp
           category: vehicle.category,
           capacity: vehicle.capacity,
           routingProfileUsed: vehicle.osrmProfile,
+          terrainPaceMultiplier: paceMultiplier,
+          terrainPaceNote: vehicle.terrainPaceNote,
           providerNotes: vehicle.providerNotes
         },
         traffic: trafficInfo,
         provider: 'OSRM (Open Source Routing Machine)'
-      };
+      });
     }
   } catch (error) {
     console.warn(`MapService - OSRM routing request failed (${error.message}). Activating algorithmic road simulation fallback.`);
@@ -494,6 +676,7 @@ const calculateMultiRoute = async ({ startLocation, destinations, vehicleType = 
   const vehicle = resolveVehicle(vehicleType);
   const trafficInfo = getTrafficStatus();
   const profile = vehicle.osrmProfile;
+  const paceMultiplier = vehicle.terrainPaceMultiplier || 1.0;
 
   // Build coordinate sequence: lng1,lat1;lng2,lat2;...
   const coordsString = allWaypoints.map(w => `${w.longitude},${w.latitude}`).join(';');
@@ -506,7 +689,7 @@ const calculateMultiRoute = async ({ startLocation, destinations, vehicleType = 
         geometries: 'geojson',
         steps: false,
         annotations: false,
-        alternatives: allWaypoints.length === 2 && includeAlternatives ? 'true' : 'false'
+        alternatives: includeAlternatives ? 'true' : 'false'
       },
       headers: {
         'User-Agent': 'DreamCeylonApp-SEU-IS-22-ICT-037/1.0'
@@ -517,40 +700,107 @@ const calculateMultiRoute = async ({ startLocation, destinations, vehicleType = 
     if (response.data && response.data.code === 'Ok' && response.data.routes && response.data.routes.length > 0) {
       const primaryRoute = response.data.routes[0];
       const leafletCoordinates = primaryRoute.geometry.coordinates.map(pt => [pt[1], pt[0]]);
+      const adjustedTotalSeconds = Math.round(primaryRoute.duration * paceMultiplier);
 
       // Process legs between consecutive waypoints
       const legs = (primaryRoute.legs || []).map((leg, index) => {
         const fromWaypoint = allWaypoints[index];
         const toWaypoint = allWaypoints[index + 1];
+        const adjustedLegSeconds = Math.round(leg.duration * paceMultiplier);
         return {
           legIndex: index + 1,
           fromName: fromWaypoint ? fromWaypoint.name : `Stop ${index}`,
           toName: toWaypoint ? toWaypoint.name : `Stop ${index + 1}`,
+          fromDistrict: fromWaypoint?.district || '',
+          toDistrict: toWaypoint?.district || '',
           distanceMeters: leg.distance,
           distanceKm: formatDistanceKm(leg.distance),
-          durationSeconds: leg.duration,
-          durationFormatted: formatDurationText(leg.duration),
+          durationSeconds: adjustedLegSeconds,
+          durationFormatted: formatDurationText(adjustedLegSeconds),
+          rawEngineDurationSeconds: Math.round(leg.duration),
+          rawEngineDurationFormatted: formatDurationText(leg.duration),
           summary: leg.summary || `Leg ${index + 1}`
         };
       });
 
       // Build alternatives if returned by OSRM
-      const routes = response.data.routes.map((r, index) => ({
-        id: index,
-        label: index === 0 ? 'Primary Optimal Route' : `Alternative Route ${index}`,
-        distanceMeters: r.distance,
-        distanceKm: formatDistanceKm(r.distance),
-        durationSeconds: r.duration,
-        durationFormatted: formatDurationText(r.duration),
-        coordinates: r.geometry.coordinates,
-        leafletCoordinates: r.geometry.coordinates.map(pt => [pt[1], pt[0]])
-      }));
+      let routes = response.data.routes.map((r, index) => {
+        const adjSec = Math.round(r.duration * paceMultiplier);
+        return {
+          id: index,
+          label: index === 0 ? 'Primary Optimal Route' : `Alternative Route ${index}`,
+          distanceMeters: r.distance,
+          distanceKm: formatDistanceKm(r.distance),
+          durationSeconds: adjSec,
+          durationFormatted: formatDurationText(adjSec),
+          rawEngineDurationSeconds: Math.round(r.duration),
+          rawEngineDurationFormatted: formatDurationText(r.duration),
+          coordinates: r.geometry.coordinates,
+          leafletCoordinates: r.geometry.coordinates.map(pt => [pt[1], pt[0]])
+        };
+      });
 
-      return {
+      // If OSRM returned 1 route for a 3+ waypoint sequence and alternatives were requested,
+      // check if any individual leg has an alternative corridor so the user can compare options
+      if (routes.length === 1 && includeAlternatives && allWaypoints.length >= 2) {
+        try {
+          const firstLegAltUrl = `http://router.project-osrm.org/route/v1/${profile}/${allWaypoints[0].longitude},${allWaypoints[0].latitude};${allWaypoints[1].longitude},${allWaypoints[1].latitude}`;
+          const altLegRes = await axios.get(firstLegAltUrl, {
+            params: { overview: 'full', geometries: 'geojson', alternatives: 'true' },
+            headers: { 'User-Agent': 'DreamCeylonApp-SEU-IS-22-ICT-037/1.0' },
+            timeout: 4500
+          });
+          if (altLegRes.data?.routes && altLegRes.data.routes.length > 1) {
+            const altFirstLeg = altLegRes.data.routes[1];
+            const firstLegPrimary = primaryRoute.legs[0] || { distance: 0, duration: 0 };
+            const remainingDist = Math.max(0, primaryRoute.distance - firstLegPrimary.distance);
+            const remainingDur = Math.max(0, primaryRoute.duration - firstLegPrimary.duration);
+            const altTotalDist = altFirstLeg.distance + remainingDist;
+            const altTotalRawDur = altFirstLeg.duration + remainingDur;
+            const altTotalAdjDur = Math.round(altTotalRawDur * paceMultiplier);
+
+            // Splice alternative first-leg geometry with the remaining route coordinates
+            const secondStopLat = allWaypoints[1].latitude;
+            const secondStopLng = allWaypoints[1].longitude;
+            let splitIdx = 0;
+            let minDiff = Infinity;
+            primaryRoute.geometry.coordinates.forEach((coord, cIdx) => {
+              const diff = Math.abs(coord[1] - secondStopLat) + Math.abs(coord[0] - secondStopLng);
+              if (diff < minDiff) {
+                minDiff = diff;
+                splitIdx = cIdx;
+              }
+            });
+            const combinedAltCoords = [
+              ...altFirstLeg.geometry.coordinates,
+              ...primaryRoute.geometry.coordinates.slice(splitIdx)
+            ];
+
+            routes.push({
+              id: 1,
+              label: `Alternative Corridor (via ${altFirstLeg.legs?.[0]?.summary || 'Secondary Highway'})`,
+              distanceMeters: altTotalDist,
+              distanceKm: formatDistanceKm(altTotalDist),
+              durationSeconds: altTotalAdjDur,
+              durationFormatted: formatDurationText(altTotalAdjDur),
+              rawEngineDurationSeconds: Math.round(altTotalRawDur),
+              rawEngineDurationFormatted: formatDurationText(altTotalRawDur),
+              coordinates: combinedAltCoords,
+              leafletCoordinates: combinedAltCoords.map(pt => [pt[1], pt[0]])
+            });
+          }
+        } catch (altLegErr) {
+          // Ignore optional alternative leg enrichment failure
+        }
+      }
+
+      return cacheCalculatedRoute({
         totalDistanceMeters: primaryRoute.distance,
         totalDistanceKm: formatDistanceKm(primaryRoute.distance),
-        totalDurationSeconds: primaryRoute.duration,
-        totalDurationFormatted: formatDurationText(primaryRoute.duration),
+        totalDurationSeconds: adjustedTotalSeconds,
+        totalDurationFormatted: formatDurationText(adjustedTotalSeconds),
+        rawEngineDurationSeconds: Math.round(primaryRoute.duration),
+        rawEngineDurationFormatted: formatDurationText(primaryRoute.duration),
         routeCoordinates: primaryRoute.geometry.coordinates,
         leafletCoordinates,
         legs,
@@ -560,18 +810,20 @@ const calculateMultiRoute = async ({ startLocation, destinations, vehicleType = 
         alternativesCount: routes.length,
         alternativesNote: routes.length > 1 
           ? `${routes.length} route options found from OSRM provider.`
-          : 'OSRM generates a unified optimal multi-stop sequence. Separate corridor alternatives are supported on two-waypoint corridors.',
+          : 'OSRM generates a unified optimal multi-stop sequence. Separate corridor alternatives are supported where secondary highways exist.',
         vehicle: {
           type: vehicle.key,
           label: vehicle.label,
           category: vehicle.category,
           capacity: vehicle.capacity,
           routingProfileUsed: vehicle.osrmProfile,
+          terrainPaceMultiplier: paceMultiplier,
+          terrainPaceNote: vehicle.terrainPaceNote,
           providerNotes: vehicle.providerNotes
         },
         traffic: trafficInfo,
         provider: 'OSRM (Open Source Routing Machine)'
-      };
+      });
     }
   } catch (error) {
     console.warn(`MapService - Multi-route OSRM request failed (${error.message}). Activating fallback calculation.`);
@@ -697,6 +949,43 @@ const nearbyDestinations = async (lat, lng, radiusInKm = 60, limit = 12) => {
 };
 
 /**
+ * Optimize destination sequence using Nearest-Neighbor Haversine ordering from startLocation
+ */
+const optimizeDestinationOrder = (startLocation, destinations = []) => {
+  if (!startLocation || !Array.isArray(destinations) || destinations.length <= 1) {
+    return destinations;
+  }
+  const remaining = [...destinations];
+  const ordered = [];
+  let currentLat = parseFloat(startLocation.latitude);
+  let currentLng = parseFloat(startLocation.longitude);
+
+  while (remaining.length > 0) {
+    let bestIdx = 0;
+    let bestDist = Infinity;
+    for (let i = 0; i < remaining.length; i++) {
+      const d = remaining[i];
+      const lat = parseFloat(d?.latitude);
+      const lng = parseFloat(d?.longitude);
+      if (!isNaN(lat) && !isNaN(lng) && !isNaN(currentLat) && !isNaN(currentLng)) {
+        const dist = haversineDistanceKm(currentLat, currentLng, lat, lng);
+        if (dist < bestDist) {
+          bestDist = dist;
+          bestIdx = i;
+        }
+      }
+    }
+    const chosen = remaining.splice(bestIdx, 1)[0];
+    ordered.push(chosen);
+    if (!isNaN(parseFloat(chosen?.latitude)) && !isNaN(parseFloat(chosen?.longitude))) {
+      currentLat = parseFloat(chosen.latitude);
+      currentLng = parseFloat(chosen.longitude);
+    }
+  }
+  return ordered;
+};
+
+/**
  * Retrieve curated preset Sri Lanka starting hubs
  */
 const getPresetStartLocations = () => {
@@ -709,6 +998,8 @@ module.exports = {
   geocodeLocation,
   calculateRoute,
   calculateMultiRoute,
+  optimizeDestinationOrder,
+  getCachedRouteById,
   nearbyDestinations,
   getPresetStartLocations,
   getTrafficStatus,
