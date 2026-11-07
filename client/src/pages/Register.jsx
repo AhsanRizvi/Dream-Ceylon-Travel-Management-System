@@ -75,10 +75,18 @@ const Register = () => {
             </button>
           </div>
         </form>
-        <div className="text-center">
+        <div className="text-center space-y-3">
           <p className="text-sm text-gray-600">
             Already have an account? <Link to="/login" className="font-medium text-blue-600 hover:text-blue-500">Log in</Link>
           </p>
+          <div className="pt-3 border-t border-gray-100 text-xs text-gray-500 flex justify-center gap-4">
+            <Link to="/guides/register" className="font-semibold text-blue-700 hover:underline">
+              Full Tour Guide Registration &rarr;
+            </Link>
+            <Link to="/hotels/register" className="font-semibold text-blue-700 hover:underline">
+              Full Hotel Partner Registration &rarr;
+            </Link>
+          </div>
         </div>
       </div>
     </div>
