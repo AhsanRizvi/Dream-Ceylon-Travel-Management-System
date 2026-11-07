@@ -13,6 +13,7 @@ import Guides from './pages/Guides';
 import Packages from './pages/Packages';
 import PackageDetails from './pages/PackageDetails';
 import Dashboard from './pages/Dashboard';
+import CalendarPage from './pages/CalendarPage';
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/planner" element={<Planner />} />
+          <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/destinations" element={<Destinations />} />
           <Route path="/destinations/:id" element={<DestinationDetails />} />
           <Route path="/hotels" element={<Hotels />} />

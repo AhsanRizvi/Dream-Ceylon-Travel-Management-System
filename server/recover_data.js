@@ -7,6 +7,8 @@ dotenv.config({ path: path.resolve(__dirname, '.env') });
 const Destination = require('./models/Destination');
 const Package = require('./models/Package');
 const connectDB = require('./config/db');
+const { enrichDestinationMetadata } = require('./services/recommendationEngine');
+const { ensureHolidaysSeeded } = require('./services/holidayService');
 
 // Authentic Sri Lankan destinations with accurate GPS, categories, and high-res imagery
 const destinationsData = [
@@ -315,6 +317,7 @@ async function recoverData() {
     let destExisting = 0;
 
     for (const d of destinationsData) {
+      const enrichedMeta = enrichDestinationMetadata(d);
       const existing = await Destination.findOne({ name: d.name });
       if (existing) {
         destExisting++;
@@ -322,7 +325,11 @@ async function recoverData() {
         const updates = {};
         if (!existing.image) updates.image = d.image;
         if (!existing.imageUrl) updates.imageUrl = d.imageUrl;
-        if (!existing.viewCount) updates.viewCount = d.viewCount;
+        if (!existing.viewCount || existing.viewCount === 0) updates.viewCount = d.viewCount;
+        if (!existing.environments || existing.environments.length === 0) updates.environments = enrichedMeta.environments;
+        if (!existing.weatherSuitability || existing.weatherSuitability.length === 0) updates.weatherSuitability = enrichedMeta.weatherSuitability;
+        if (!existing.estimatedDurationHours) updates.estimatedDurationHours = enrichedMeta.estimatedDurationHours;
+        if (!existing.openingHours) updates.openingHours = enrichedMeta.openingHours;
 
         if (Object.keys(updates).length > 0) {
           await Destination.updateOne({ _id: existing._id }, { $set: updates });
@@ -332,7 +339,13 @@ async function recoverData() {
           console.log(`[PRESERVE] Destination "${d.name}" already fully intact.`);
         }
       } else {
-        await Destination.create(d);
+        await Destination.create({
+          ...d,
+          environments: enrichedMeta.environments,
+          weatherSuitability: enrichedMeta.weatherSuitability,
+          estimatedDurationHours: enrichedMeta.estimatedDurationHours,
+          openingHours: enrichedMeta.openingHours
+        });
         destInserted++;
         console.log(`[INSERT] Destination "${d.name}" recovered and inserted.`);
       }
@@ -372,6 +385,81 @@ async function recoverData() {
 
     const totalPkgCount = await Package.countDocuments();
     console.log(`Packages Summary: Total = ${totalPkgCount} (Inserted: ${pkgInserted}, Updated: ${pkgUpdated}, Preserved: ${pkgExisting})`);
+
+    // 3. SAFE SEEDING FOR SRI LANKAN PUBLIC HOLIDAYS
+    console.log('\n--- Seeding Sri Lankan Public Holidays ---');
+    await ensureHolidaysSeeded();
+    const Holiday = require('./models/Holiday');
+    const holidayCount = await Holiday.countDocuments();
+    console.log(`Holidays Summary: Total = ${holidayCount} official Sri Lankan public holidays in DB.`);
+
+    // 4. SAFE SEEDING FOR DEMO TOURIST PROFILE & SAMPLE ITINERARY
+    const User = require('./models/User');
+    const TouristProfile = require('./models/TouristProfile');
+    const TourPlan = require('./models/TourPlan');
+    const { generateDayByDayItinerary } = require('./services/itineraryGenerator');
+    const demoUser = await User.findOne({ email: 'kasun.tourist@dreamceylon.lk' });
+    if (demoUser) {
+      await TouristProfile.findOneAndUpdate(
+        { userId: demoUser._id },
+        {
+          $set: {
+            userId: demoUser._id,
+            travelDays: 3,
+            travelers: 2,
+            groupSize: 2,
+            mealType: 'Seafood',
+            environments: ['Mountains', 'Hiking', 'Waterfalls'],
+            interests: ['Mountains', 'Hiking', 'Waterfalls'],
+            weatherPreference: 'Cool',
+            transportation: 'Car',
+            guideRequirement: 'Required',
+            guideRequired: true,
+            packageLevel: 'Standard'
+          }
+        },
+        { upsert: true }
+      );
+      const existingPlans = await TourPlan.countDocuments({ touristId: demoUser._id });
+      if (existingPlans === 0) {
+        const highlandDests = await Destination.find({
+          name: { $in: ['Kandy', 'Nuwara Eliya', 'Ella', 'Horton Plains'] }
+        });
+        const gen = await generateDayByDayItinerary({
+          destinations: highlandDests,
+          days: 3,
+          startDate: '2026-11-12',
+          preferences: {
+            mealType: 'Seafood',
+            transportation: 'Car',
+            guideRequirement: 'Required',
+            packageLevel: 'Standard'
+          }
+        });
+        await TourPlan.create({
+          touristId: demoUser._id,
+          title: 'Central Highlands & Tea Country Discovery',
+          days: 3,
+          travelers: 2,
+          stops: gen.stops,
+          dates: gen.dates,
+          transportType: 'Car',
+          preferences: {
+            mealType: 'Seafood',
+            environments: ['Mountains', 'Hiking', 'Waterfalls'],
+            weatherPreference: 'Cool',
+            transportation: 'Car',
+            guideRequirement: 'Required',
+            packageLevel: 'Standard',
+            addGuide: true
+          },
+          dailyItinerary: gen.dailyItinerary,
+          costEstimate: { baseTotal: 1080, guideCost: 135, mealExtraCost: 0, grandTotal: 1215 },
+          status: 'Saved'
+        });
+        console.log('[INSERT] Seeded sample 3-day TourPlan for demo user kasun.tourist@dreamceylon.lk');
+      }
+    }
 
     console.log('\n=== RECOVERY COMPLETED SUCCESSFULLY ===');
     await mongoose.connection.close();

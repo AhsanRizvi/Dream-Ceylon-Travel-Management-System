@@ -1,866 +1,1588 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { PackageContext } from '../context/PackageContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import api from '../services/api';
-import DestinationCard from '../components/DestinationCard';
+import RecommendationCard from '../components/RecommendationCard';
+import ItineraryManager from '../components/ItineraryManager';
+import TravelCalendar from '../components/TravelCalendar';
+import SavedPlansList from '../components/SavedPlansList';
 import MapView from '../components/MapView';
-import { 
-  Car, Home, Utensils, Compass, Check, X, Sparkles, 
-  ShieldCheck, AlertCircle, Info, ChevronRight, DollarSign 
+import {
+  Car,
+  Home,
+  Utensils,
+  Compass,
+  Check,
+  Sparkles,
+  ShieldCheck,
+  AlertCircle,
+  Info,
+  DollarSign,
+  Calendar as CalendarIcon,
+  Sliders,
+  MapPin,
+  ArrowUp,
+  ArrowDown,
+  Trash2,
+  FolderOpen,
+  CheckCircle2,
+  X,
+  Star,
+  Clock,
+  Sun,
+  Navigation,
+  Users,
+  CloudSun,
+  Mountain,
+  Trees,
+  Waves,
+  Bike
 } from 'lucide-react';
+
+const ENVIRONMENT_OPTIONS = [
+  { name: 'Seaside', desc: 'Golden beaches, surf bays & coastal forts', icon: Waves },
+  { name: 'Forest and Nature', desc: 'Rainforests, cloud forests & wildlife parks', icon: Trees },
+  { name: 'Hiking', desc: 'Scenic mountain peaks, rock fortresses & trails', icon: Compass },
+  { name: 'Mountains', desc: 'Misty tea highlands & cool hill-country valleys', icon: Mountain },
+  { name: 'Waterfalls', desc: 'Cascading highland falls & crystal streams', icon: Sparkles },
+  { name: 'Lakes', desc: 'Sacred Kandy Lake, highland reservoirs & lagoons', icon: Waves },
+  { name: 'Plains', desc: 'Open safari plains, plateaus & heritage gardens', icon: Sun }
+];
+
+const MEAL_OPTIONS = [
+  { name: 'Vegetarian', desc: 'Plant-based & dairy vegetarian curries' },
+  { name: 'Vegan', desc: '100% plant-based organic Sri Lankan & tropical fare' },
+  { name: 'Seafood', desc: 'Fresh Indian Ocean crab, prawns & coastal catch' },
+  { name: 'All meat types', desc: 'Full Sri Lankan & international culinary variety' }
+];
+
+const WEATHER_OPTIONS = [
+  { name: 'Cool', desc: 'Misty hill country (14°C–22°C) — Nuwara Eliya, Ella' },
+  { name: 'Hot', desc: 'Sunny tropical coasts & ancient plains (27°C–32°C)' },
+  { name: 'Cloudy', desc: 'Mild overcast mountain & central highland breeze' }
+];
+
+const TRANSPORT_OPTIONS = [
+  { name: 'Motorcycle', desc: '1–2 riders • Agile scenic touring', maxTravelers: 2 },
+  { name: 'Car', desc: '1–3 passengers • Private A/C Sedan', maxTravelers: 4 },
+  { name: 'Van', desc: '4–12+ passengers • Spacious A/C Passenger Van', maxTravelers: 50 }
+];
 
 const Planner = () => {
   const { user } = useContext(AuthContext);
-  const { 
-    selectedPackage, 
-    selectPackage, 
-    customizations, 
-    updateCustomizations, 
-    calculatePackageCost 
+  const {
+    selectedPackage,
+    selectPackage,
+    customizations,
+    updateCustomizations,
+    calculatePackageCost
   } = useContext(PackageContext);
 
   const navigate = useNavigate();
-  const [step, setStep] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState(null);
-  const [availablePackages, setAvailablePackages] = useState([]);
+  const [searchParams] = useSearchParams();
+  const mapSectionRef = useRef(null);
 
-  // Map integration states
+  // Active workspace tab: 'preferences' | 'recommendations' | 'schedule' | 'calendar' | 'saved'
+  const initialTab = searchParams.get('tab') || 'preferences';
+  const [activeTab, setActiveTab] = useState(initialTab);
+
+  // Catalog & Packages state
+  const [availablePackages, setAvailablePackages] = useState([]);
+  const [allDestinations, setAllDestinations] = useState([]);
+
+  // Default tomorrow date string (YYYY-MM-DD)
+  const defaultTomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+
+  // Module 1: Tourist Preferences State
+  const [formData, setFormData] = useState({
+    travelDays: 3,
+    travelers: 2,
+    startDate: defaultTomorrow,
+    mealType: 'All meat types',
+    environments: ['Mountains', 'Hiking', 'Waterfalls'],
+    weatherPreference: 'Cool',
+    transportation: 'Car',
+    guideRequirement: 'Not required',
+    packageLevel: selectedPackage?.packageName || 'Standard'
+  });
+
+  // Rule-based Scoring Weights (configurable, default 40/20/15/10/10/5)
+  const [showWeightsConfig, setShowWeightsConfig] = useState(false);
+  const [scoringWeights, setScoringWeights] = useState({
+    interest: 40,
+    proximity: 20,
+    rating: 15,
+    popularity: 10,
+    weather: 10,
+    visitTime: 5
+  });
+
+  // Validation & Status Feedback
+  const [validationError, setValidationError] = useState('');
+  const [statusBanner, setStatusBanner] = useState(null); // { type: 'success' | 'error', text: '' }
+
+  // Module 1: Recommendations & Selected Destinations
+  const [loadingRecs, setLoadingRecs] = useState(false);
+  const [recommendations, setRecommendations] = useState([]);
+  const [selectedDestinations, setSelectedDestinations] = useState([]);
+  const [focusedMapDestination, setFocusedMapDestination] = useState(null);
+  const [detailModalDest, setDetailModalDest] = useState(null);
+
+  // Module 6: Day-by-Day Itinerary & Route Map State
+  const [itineraryData, setItineraryData] = useState(null);
+  const [generatingSchedule, setGeneratingSchedule] = useState(false);
+  const [savingItinerary, setSavingItinerary] = useState(false);
   const [routeCoordinates, setRouteCoordinates] = useState([]);
   const [totalDistance, setTotalDistance] = useState('');
   const [totalDuration, setTotalDuration] = useState('');
   const [loadingRoute, setLoadingRoute] = useState(false);
-  
-  const [formData, setFormData] = useState({
-    days: 3,
-    travelers: 2,
-    interests: [],
-    weatherPreference: 'Any',
-    vehicleType: 'Car',
-    budget: 800
-  });
 
-  // Fetch all packages if user hasn't selected one or wants to switch
+  // Saved Travel Plans State
+  const [savedPlans, setSavedPlans] = useState([]);
+  const [loadingSavedPlans, setLoadingSavedPlans] = useState(false);
+
+  // Sync URL ?tab=... parameter
   useEffect(() => {
-    const fetchAllPackages = async () => {
-      try {
-        const res = await api.get('/packages');
-        const list = res.data?.data || res.data || [];
-        const order = { Basic: 1, Standard: 2, Premium: 3 };
-        list.sort((a, b) => (order[a.packageName] || 9) - (order[b.packageName] || 9));
-        setAvailablePackages(list);
+    const tabParam = searchParams.get('tab');
+    if (tabParam && ['preferences', 'recommendations', 'schedule', 'calendar', 'saved'].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
 
-        // If no package currently selected, default to Standard
-        if (!selectedPackage && list.length > 0) {
-          const defaultPkg = list.find(p => p.packageName === 'Standard') || list[0];
+  // Load Packages, All Destinations, Saved Preferences, and Saved Plans on mount
+  useEffect(() => {
+    const initPlannerData = async () => {
+      try {
+        const [pkgRes, destRes] = await Promise.all([
+          api.get('/packages'),
+          api.get('/destinations')
+        ]);
+
+        const pkgList = pkgRes.data?.data || pkgRes.data || [];
+        const order = { Basic: 1, Standard: 2, Premium: 3 };
+        pkgList.sort((a, b) => (order[a.packageName] || 9) - (order[b.packageName] || 9));
+        setAvailablePackages(pkgList);
+
+        if (!selectedPackage && pkgList.length > 0) {
+          const defaultPkg = pkgList.find((p) => p.packageName === 'Standard') || pkgList[0];
           selectPackage(defaultPkg);
         }
+
+        const destList = destRes.data?.data || destRes.data || [];
+        setAllDestinations(Array.isArray(destList) ? destList : []);
       } catch (err) {
-        console.error('Failed to load packages in planner:', err);
+        console.error('Error initializing planner catalog:', err);
       }
     };
-    fetchAllPackages();
+
+    initPlannerData();
   }, []);
 
-  const activePackage = selectedPackage || availablePackages.find(p => p.packageName === 'Standard') || null;
+  // Load user's saved preferences and saved itineraries when logged in
+  const fetchSavedPlans = async () => {
+    if (!user) return;
+    setLoadingSavedPlans(true);
+    try {
+      const res = await api.get('/itineraries');
+      setSavedPlans(res.data?.data || []);
+    } catch (err) {
+      console.error('Failed to load saved itineraries:', err);
+    } finally {
+      setLoadingSavedPlans(false);
+    }
+  };
 
-  const handleNext = () => setStep(step + 1);
-  const handlePrev = () => setStep(step - 1);
+  useEffect(() => {
+    if (user) {
+      fetchSavedPlans();
+      api
+        .get('/planner/preferences')
+        .then((res) => {
+          const prof = res.data?.data;
+          if (prof) {
+            setFormData((prev) => ({
+              ...prev,
+              travelDays: prof.travelDays || prev.travelDays,
+              travelers: prof.travelers || prof.groupSize || prev.travelers,
+              mealType: prof.mealType || prev.mealType,
+              environments:
+                Array.isArray(prof.environments) && prof.environments.length > 0
+                  ? prof.environments
+                  : Array.isArray(prof.interests) && prof.interests.length > 0
+                    ? prof.interests
+                    : prev.environments,
+              weatherPreference: prof.weatherPreference || prev.weatherPreference,
+              transportation: prof.transportation || prev.transportation,
+              guideRequirement: prof.guideRequirement || prev.guideRequirement,
+              packageLevel: prof.packageLevel || prev.packageLevel
+            }));
+          }
+        })
+        .catch(() => {});
+    }
+  }, [user]);
 
-  const toggleInterest = (interest) => {
-    setFormData(prev => {
-      const interests = prev.interests.includes(interest)
-        ? prev.interests.filter(i => i !== interest)
-        : [...prev.interests, interest];
-      return { ...prev, interests };
+  const activePackage =
+    availablePackages.find((p) => p.packageName === formData.packageLevel) ||
+    selectedPackage ||
+    availablePackages[0] ||
+    null;
+
+  const handleSelectPackageLevel = (pkg) => {
+    selectPackage(pkg);
+    const nextGuideReq =
+      pkg.packageName === 'Premium'
+        ? 'Required'
+        : pkg.packageName === 'Basic'
+          ? 'Not required'
+          : formData.guideRequirement;
+
+    if (pkg.packageName === 'Standard') {
+      updateCustomizations({ addGuide: nextGuideReq === 'Required' });
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      packageLevel: pkg.packageName,
+      guideRequirement: nextGuideReq
+    }));
+  };
+
+  const toggleEnvironment = (envName) => {
+    setValidationError('');
+    setFormData((prev) => {
+      const exists = prev.environments.includes(envName);
+      const next = exists
+        ? prev.environments.filter((e) => e !== envName)
+        : [...prev.environments, envName];
+      return { ...prev, environments: next };
     });
   };
 
-  const fetchRoute = async (dests) => {
-    if (dests.length > 1) {
-      setLoadingRoute(true);
-      let aggregatedCoordinates = [];
-      let totalDist = 0;
-      let totalDur = 0;
+  // Validate preferences strictly before generating recommendations
+  const validateForm = () => {
+    const days = Number(formData.travelDays);
+    if (!Number.isInteger(days) || days < 1 || days > 30) {
+      setValidationError('Please enter a valid trip duration between 1 and 30 days.');
+      return false;
+    }
+    const travelers = Number(formData.travelers);
+    if (!Number.isInteger(travelers) || travelers < 1 || travelers > 50) {
+      setValidationError('Number of travellers must be at least 1 (maximum 50).');
+      return false;
+    }
+    if (!formData.mealType) {
+      setValidationError('Please select a preferred meal type.');
+      return false;
+    }
+    if (!Array.isArray(formData.environments) || formData.environments.length === 0) {
+      setValidationError('Please select at least one preferred travel environment.');
+      return false;
+    }
+    if (!formData.weatherPreference) {
+      setValidationError('Please select your preferred weather.');
+      return false;
+    }
+    if (!formData.transportation) {
+      setValidationError('Please select your preferred transportation mode.');
+      return false;
+    }
+    if (!formData.guideRequirement) {
+      setValidationError('Please select whether a tour guide is required.');
+      return false;
+    }
+    if (!formData.packageLevel) {
+      setValidationError('Please select a package level (Basic, Standard, or Premium).');
+      return false;
+    }
+    setValidationError('');
+    return true;
+  };
 
-      try {
-        for (let i = 0; i < dests.length - 1; i++) {
-          const origin = dests[i];
-          const dest = dests[i + 1];
-          
-          const res = await api.get('/maps/route', {
-            params: {
-              originLat: origin.latitude,
-              originLng: origin.longitude,
-              destLat: dest.latitude,
-              destLng: dest.longitude,
-              vehicleType: formData.vehicleType.toLowerCase()
-            }
-          });
+  // Fetch OSRM Road Route Polyline for a list of destinations
+  const fetchRoadRoute = async (dests) => {
+    if (!Array.isArray(dests) || dests.length < 2) {
+      setRouteCoordinates([]);
+      setTotalDistance('');
+      setTotalDuration('');
+      return;
+    }
 
-          if (res.data.success) {
-            const routeData = res.data.data;
-            totalDist += routeData.distance;
-            totalDur += routeData.duration;
-            
-            // OSRM returns [lng, lat], Leaflet needs [lat, lng]
-            const leafletCoords = routeData.coordinates.map(coord => [coord[1], coord[0]]);
-            aggregatedCoordinates = [...aggregatedCoordinates, ...leafletCoords];
+    setLoadingRoute(true);
+    let aggregatedCoordinates = [];
+    let totalDist = 0;
+    let totalDur = 0;
+
+    try {
+      const vehicleParam =
+        formData.transportation === 'Motorcycle'
+          ? 'bike'
+          : formData.transportation.toLowerCase();
+
+      for (let i = 0; i < dests.length - 1; i++) {
+        const origin = dests[i];
+        const dest = dests[i + 1];
+        if (!origin.latitude || !dest.latitude) continue;
+
+        const res = await api.get('/maps/route', {
+          params: {
+            originLat: origin.latitude,
+            originLng: origin.longitude,
+            destLat: dest.latitude,
+            destLng: dest.longitude,
+            vehicleType: vehicleParam
           }
+        });
+
+        if (res.data?.success && res.data.data) {
+          const routeData = res.data.data;
+          totalDist += routeData.distance || 0;
+          totalDur += routeData.duration || 0;
+          const leafletCoords = (routeData.coordinates || []).map((coord) => [
+            coord[1],
+            coord[0]
+          ]);
+          aggregatedCoordinates = [...aggregatedCoordinates, ...leafletCoords];
         }
-        
-        setRouteCoordinates(aggregatedCoordinates);
-        setTotalDistance((totalDist / 1000).toFixed(2) + ' km');
-        
+      }
+
+      setRouteCoordinates(aggregatedCoordinates);
+      if (totalDist > 0) {
+        setTotalDistance(`${(totalDist / 1000).toFixed(1)} km`);
         const hours = Math.floor(totalDur / 3600);
         const minutes = Math.floor((totalDur % 3600) / 60);
         setTotalDuration(`${hours}h ${minutes}m`);
-        
-      } catch (err) {
-        console.error("Route fetching error:", err);
-      } finally {
-        setLoadingRoute(false);
       }
+    } catch (err) {
+      console.error('OSRM route calculation fallback:', err);
+    } finally {
+      setLoadingRoute(false);
     }
   };
 
-  const handleSubmit = async () => {
+  // STEP 1 -> STEP 2: Submit Preferences & Generate Smart Recommendations
+  const handleGetRecommendations = async (e) => {
+    if (e) e.preventDefault();
+    if (!validateForm()) return;
+
     if (!user) {
-      alert("Please login to generate your smart plan.");
+      setStatusBanner({
+        type: 'error',
+        text: 'Please log in to save preferences and generate personalized recommendations.'
+      });
       navigate('/login');
       return;
     }
-    setLoading(true);
-    try {
-      const res = await api.get('/destinations');
-      let dests = res.data?.data || res.data || [];
-      
-      if (formData.interests.length > 0) {
-        dests = dests.filter(d => formData.interests.includes(d.category));
-      }
-      
-      if (formData.weatherPreference === 'Cold') {
-        dests = dests.filter(d => ['Nuwara Eliya', 'Badulla'].includes(d.district));
-      } else if (formData.weatherPreference === 'Hot') {
-        dests = dests.filter(d => !['Nuwara Eliya', 'Badulla'].includes(d.district));
-      }
-      
-      const finalDests = dests.filter(d => d.latitude && d.longitude).slice(0, formData.days);
-      
-      // Calculate dynamic cost based on package rules and selections
-      const costCalculation = calculatePackageCost(activePackage, formData.days, formData.travelers, customizations);
 
-      setResults({
-        destinations: finalDests,
-        costBreakdown: costCalculation,
-        estimatedCost: costCalculation.grandTotal,
-        packageSnapshot: activePackage,
-        customizationsSnapshot: { ...customizations },
-        itinerary: finalDests.map((d, i) => ({ day: i + 1, ...d }))
+    setLoadingRecs(true);
+    setStatusBanner(null);
+
+    try {
+      const res = await api.post('/planner/recommendations', {
+        ...formData,
+        weights: scoringWeights
       });
-      
-      await fetchRoute(finalDests);
-      setLoading(false);
-      
+
+      const recList = res.data?.data || [];
+      setRecommendations(recList);
+
+      // Pre-select the top N recommended destinations (up to travelDays + 1) so the user has an immediate curated set
+      const initialCount = Math.min(recList.length, Math.max(2, Number(formData.travelDays) + 1));
+      const autoSelected = recList.slice(0, initialCount).map((r) => r.destination);
+      setSelectedDestinations(autoSelected);
+
+      setActiveTab('recommendations');
+      setStatusBanner({
+        type: 'success',
+        text: `Found ${recList.length} personalized Sri Lankan destination(s) matching your preferences!`
+      });
     } catch (err) {
-      console.error(err);
-      setLoading(false);
+      const msg =
+        err.response?.data?.error ||
+        err.message ||
+        'Failed to generate destination recommendations.';
+      setValidationError(msg);
+    } finally {
+      setLoadingRecs(false);
     }
   };
 
-  // Current live cost calculation preview
-  const currentCost = calculatePackageCost(activePackage, formData.days, formData.travelers, customizations);
+  // Toggle destination in Selected Trip Stops
+  const handleToggleSelectDestination = (dest) => {
+    setSelectedDestinations((prev) => {
+      const exists = prev.some((d) => d._id === dest._id);
+      if (exists) {
+        return prev.filter((d) => d._id !== dest._id);
+      }
+      return [...prev, dest];
+    });
+  };
+
+  // Reorder selected destinations in Trip Tray
+  const handleMoveSelectedStop = (index, direction) => {
+    const targetIdx = direction === 'up' ? index - 1 : index + 1;
+    if (targetIdx < 0 || targetIdx >= selectedDestinations.length) return;
+    const copy = [...selectedDestinations];
+    const temp = copy[index];
+    copy[index] = copy[targetIdx];
+    copy[targetIdx] = temp;
+    setSelectedDestinations(copy);
+  };
+
+  // View a specific destination on the interactive map
+  const handleViewOnMap = (dest) => {
+    setFocusedMapDestination(dest);
+    if (mapSectionRef.current) {
+      mapSectionRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  // STEP 2 -> STEP 3: Generate Day-by-Day Itinerary from Selected Destinations
+  const handleGenerateSchedule = async ({ saveImmediately = false, preserveOrder = false } = {}) => {
+    if (selectedDestinations.length === 0) {
+      setStatusBanner({
+        type: 'error',
+        text: 'Please select at least one destination to generate your day-by-day itinerary.'
+      });
+      return;
+    }
+
+    setGeneratingSchedule(true);
+    setStatusBanner(null);
+
+    try {
+      const costCalc = calculatePackageCost(
+        activePackage,
+        formData.travelDays,
+        formData.travelers,
+        customizations
+      );
+
+      const res = await api.post('/itineraries/generate', {
+        destinations: selectedDestinations,
+        days: Number(formData.travelDays),
+        travelers: Number(formData.travelers),
+        startDate: formData.startDate,
+        preserveOrder,
+        saveToDb: saveImmediately,
+        title: `Sri Lanka ${formData.travelDays}-Day ${formData.packageLevel} Tour`,
+        preferences: {
+          ...formData,
+          selectedMealOption: customizations.selectedMealOption,
+          selectedGuideOption: customizations.selectedGuideOption,
+          addGuide: customizations.addGuide
+        },
+        costEstimate: costCalc
+      });
+
+      const generatedPlan = res.data?.data;
+      setItineraryData({
+        ...generatedPlan,
+        costEstimate: costCalc
+      });
+
+      const orderedDests =
+        generatedPlan.orderedDestinations ||
+        (Array.isArray(generatedPlan.stops) && typeof generatedPlan.stops[0] === 'object'
+          ? generatedPlan.stops
+          : selectedDestinations);
+
+      fetchRoadRoute(orderedDests);
+
+      if (saveImmediately) {
+        fetchSavedPlans();
+        setStatusBanner({
+          type: 'success',
+          text: 'Recommended travel plan generated and saved to your profile!'
+        });
+      } else {
+        setStatusBanner({
+          type: 'success',
+          text: `Generated practical ${formData.travelDays}-day schedule across ${selectedDestinations.length} destination(s).`
+        });
+      }
+
+      setActiveTab('schedule');
+    } catch (err) {
+      setStatusBanner({
+        type: 'error',
+        text: err.response?.data?.error || 'Failed to generate day-by-day schedule.'
+      });
+    } finally {
+      setGeneratingSchedule(false);
+    }
+  };
+
+  // Save or Update Itinerary in MongoDB
+  const handleSaveItinerary = async () => {
+    if (!itineraryData) return;
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    setSavingItinerary(true);
+    setStatusBanner(null);
+
+    try {
+      const costCalc = calculatePackageCost(
+        activePackage,
+        itineraryData.days || formData.travelDays,
+        itineraryData.travelers || formData.travelers,
+        customizations
+      );
+
+      // Extract unique destination IDs from visit activities or stops
+      const visitIds = [];
+      (itineraryData.dailyItinerary || []).forEach((d) => {
+        (d.activities || []).forEach((act) => {
+          if (act.destinationId && !visitIds.includes(act.destinationId.toString())) {
+            visitIds.push(act.destinationId.toString());
+          }
+        });
+      });
+
+      const payload = {
+        title: itineraryData.title || `Sri Lanka ${formData.travelDays}-Day Smart Tour`,
+        days: itineraryData.dailyItinerary?.length || Number(formData.travelDays),
+        travelers: Number(formData.travelers),
+        stops: visitIds.length > 0 ? visitIds : selectedDestinations.map((d) => d._id),
+        dates: itineraryData.dates,
+        transportType: formData.transportation,
+        preferences: {
+          ...formData,
+          selectedMealOption: customizations.selectedMealOption,
+          selectedGuideOption: customizations.selectedGuideOption,
+          addGuide: customizations.addGuide
+        },
+        dailyItinerary: itineraryData.dailyItinerary,
+        costEstimate: costCalc,
+        routeData: {
+          totalDistance,
+          totalDuration
+        },
+        status: 'Saved'
+      };
+
+      let res;
+      if (itineraryData._id) {
+        res = await api.put(`/itineraries/${itineraryData._id}`, payload);
+      } else {
+        res = await api.post('/itineraries', payload);
+      }
+
+      const savedDoc = res.data?.data;
+      setItineraryData(savedDoc);
+      await fetchSavedPlans();
+
+      setStatusBanner({
+        type: 'success',
+        text: itineraryData._id
+          ? 'Your itinerary changes have been saved to MongoDB!'
+          : 'Your personalized itinerary has been saved to your profile!'
+      });
+    } catch (err) {
+      setStatusBanner({
+        type: 'error',
+        text: err.response?.data?.error || 'Failed to save itinerary.'
+      });
+    } finally {
+      setSavingItinerary(false);
+    }
+  };
+
+  // Load a saved plan into the active editor or calendar
+  const handleLoadSavedPlan = (plan, targetTab = 'schedule') => {
+    setItineraryData(plan);
+    if (Array.isArray(plan.stops) && plan.stops.length > 0 && typeof plan.stops[0] === 'object') {
+      setSelectedDestinations(plan.stops);
+      fetchRoadRoute(plan.stops);
+    }
+    if (plan.preferences) {
+      setFormData((prev) => ({
+        ...prev,
+        travelDays: plan.days || prev.travelDays,
+        travelers: plan.travelers || prev.travelers,
+        mealType: plan.preferences.mealType || prev.mealType,
+        environments:
+          plan.preferences.environments?.length > 0
+            ? plan.preferences.environments
+            : prev.environments,
+        weatherPreference: plan.preferences.weatherPreference || prev.weatherPreference,
+        transportation: plan.preferences.transportation || plan.transportType || prev.transportation,
+        guideRequirement: plan.preferences.guideRequirement || prev.guideRequirement,
+        packageLevel: plan.preferences.packageLevel || prev.packageLevel
+      }));
+    }
+    setActiveTab(targetTab);
+    setStatusBanner({
+      type: 'success',
+      text: `Loaded "${plan.title}" into your workspace.`
+    });
+  };
+
+  // Delete a saved plan
+  const handleDeleteSavedPlan = async (planId) => {
+    if (!window.confirm('Are you sure you want to delete this saved travel plan?')) return;
+    try {
+      await api.delete(`/itineraries/${planId}`);
+      if (itineraryData?._id === planId) {
+        setItineraryData(null);
+      }
+      await fetchSavedPlans();
+      setStatusBanner({
+        type: 'success',
+        text: 'Travel plan deleted successfully.'
+      });
+    } catch (err) {
+      setStatusBanner({
+        type: 'error',
+        text: err.response?.data?.error || 'Failed to delete travel plan.'
+      });
+    }
+  };
+
+  // Live package cost calculation
+  const currentCost = calculatePackageCost(
+    activePackage,
+    formData.travelDays,
+    formData.travelers,
+    customizations
+  );
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-10">
-      <div className="bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100">
-        
-        {/* Header */}
-        <div className="bg-gradient-to-r from-blue-950 via-blue-900 to-indigo-900 p-8 text-white text-center">
-          <span className="text-xs font-bold uppercase tracking-widest text-blue-300 bg-blue-800/60 px-3.5 py-1 rounded-full border border-blue-400/30">
-            Intelligent Tour Planner
-          </span>
-          <h1 className="text-3xl md:text-4xl font-extrabold mt-2 mb-2">Smart Ceylon Journey Planner</h1>
-          <p className="text-blue-100 text-sm max-w-xl mx-auto">
-            Design your ideal holiday combining custom packages, interactive route mapping, and tailored travel services.
-          </p>
+    <div className="max-w-7xl mx-auto px-4 py-8">
+      {/* Top Hero Banner */}
+      <div className="bg-gradient-to-r from-blue-950 via-blue-900 to-indigo-900 rounded-3xl p-8 text-white shadow-xl mb-8">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+          <div>
+            <span className="text-xs font-bold uppercase tracking-widest text-yellow-300 bg-blue-800/70 px-3.5 py-1 rounded-full border border-yellow-400/30">
+              Smart Lanka Tourism Planner
+            </span>
+            <h1 className="text-3xl md:text-4xl font-extrabold mt-2">
+              Personalized Sri Lankan Vacation & Schedule Builder
+            </h1>
+            <p className="text-blue-200 text-sm mt-1 max-w-2xl">
+              Enter your travel preferences, discover rule-scored Sri Lankan destinations, customize your day-by-day schedule, and plan around official Sri Lankan holidays.
+            </p>
+          </div>
+
+          {/* Live Trip Summary Pill */}
+          <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-4 min-w-[240px]">
+            <div className="flex justify-between items-center text-xs text-blue-200 mb-1">
+              <span>{formData.packageLevel} Package</span>
+              <span>
+                {formData.travelDays} Days • {formData.travelers} Guests
+              </span>
+            </div>
+            <div className="text-2xl font-extrabold text-emerald-400">
+              ${currentCost.grandTotal}{' '}
+              <span className="text-xs font-normal text-blue-200">Est. Total</span>
+            </div>
+            <div className="text-[11px] text-blue-200 mt-1 truncate">
+              {formData.transportation} • {formData.mealType} • {formData.weatherPreference} Weather
+            </div>
+          </div>
         </div>
-        
-        <div className="p-6 md:p-10">
-          {!results ? (
-            <div className="space-y-8">
-              
-              {/* Stepper Wizard Indicator */}
-              <div className="flex justify-between items-center relative max-w-2xl mx-auto mb-10">
-                <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-full h-1 bg-gray-200 z-0"></div>
-                <div 
-                  className="absolute left-0 top-1/2 transform -translate-y-1/2 h-1 bg-blue-600 z-0 transition-all duration-300" 
-                  style={{ width: `${(step - 1) * 33.33}%` }}
-                ></div>
-                
-                {[
-                  { num: 1, label: 'Package & Basics' },
-                  { num: 2, label: 'Interests & Dining' },
-                  { num: 3, label: 'Transport & Guide' },
-                  { num: 4, label: 'Investment & Review' }
-                ].map(s => (
-                  <div key={s.num} className="relative z-10 flex flex-col items-center">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all ${step >= s.num ? 'bg-blue-600 text-white shadow-md ring-4 ring-blue-100' : 'bg-gray-200 text-gray-500'}`}>
-                      {s.num}
+
+        {/* Navigation Tabs for the 5 Core Views */}
+        <div className="flex flex-wrap gap-2 mt-8 pt-6 border-t border-white/15">
+          {[
+            { id: 'preferences', label: '1. Tourist Preferences', icon: Sliders },
+            {
+              id: 'recommendations',
+              label: `2. Recommendations (${recommendations.length})`,
+              icon: Sparkles
+            },
+            {
+              id: 'schedule',
+              label: `3. Day-by-Day Schedule`,
+              icon: Compass
+            },
+            { id: 'calendar', label: '4. Travel Calendar', icon: CalendarIcon },
+            {
+              id: 'saved',
+              label: `5. Saved Plans (${savedPlans.length})`,
+              icon: FolderOpen
+            }
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all ${
+                  isActive
+                    ? 'bg-yellow-400 text-slate-950 shadow-lg scale-[1.02]'
+                    : 'bg-white/10 text-blue-100 hover:bg-white/20'
+                }`}
+              >
+                <Icon size={15} />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Global Notification / Status Banner */}
+      {statusBanner && (
+        <div
+          className={`mb-6 p-4 rounded-2xl border flex justify-between items-center gap-4 text-sm font-medium ${
+            statusBanner.type === 'error'
+              ? 'bg-red-50 border-red-200 text-red-800'
+              : 'bg-emerald-50 border-emerald-200 text-emerald-900'
+          }`}
+        >
+          <div className="flex items-center gap-2.5">
+            {statusBanner.type === 'error' ? (
+              <AlertCircle size={18} className="text-red-600 flex-shrink-0" />
+            ) : (
+              <CheckCircle2 size={18} className="text-emerald-600 flex-shrink-0" />
+            )}
+            <span>{statusBanner.text}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setStatusBanner(null)}
+            className="text-gray-400 hover:text-gray-600"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
+      {/* =====================================================================
+          TAB 1: TOURIST PREFERENCES COLLECTION (MODULE 1.A)
+         ===================================================================== */}
+      {activeTab === 'preferences' && (
+        <form
+          onSubmit={handleGetRecommendations}
+          className="bg-white rounded-3xl shadow-sm border border-gray-200 p-6 md:p-10 space-y-10"
+        >
+          {validationError && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-2xl text-red-800 text-sm flex items-center gap-2.5 font-semibold">
+              <AlertCircle size={18} className="text-red-600 flex-shrink-0" />
+              <span>{validationError}</span>
+            </div>
+          )}
+
+          {/* SECTION 1: Trip Duration, Start Date & Travellers */}
+          <div className="space-y-4">
+            <div className="border-b border-gray-100 pb-3">
+              <span className="text-xs font-extrabold uppercase tracking-wider text-blue-600">
+                Step 1 of 5
+              </span>
+              <h2 className="text-2xl font-extrabold text-gray-900">
+                Trip Duration, Dates & Party Size
+              </h2>
+              <p className="text-xs text-gray-500">
+                Specify your number of travel days (1–30), planned start date, and number of travellers.
+              </p>
+            </div>
+
+            <div className="grid sm:grid-cols-3 gap-6">
+              <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200">
+                <label className="block text-xs font-extrabold uppercase text-gray-700 mb-2">
+                  1. Number of Travel Days *
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="30"
+                  required
+                  value={formData.travelDays}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      travelDays: e.target.value === '' ? '' : parseInt(e.target.value, 10)
+                    })
+                  }
+                  className="w-full p-3 bg-white border border-gray-300 rounded-xl font-extrabold text-lg text-gray-900 focus:ring-2 focus:ring-blue-500"
+                />
+                <span className="text-[11px] text-gray-500 mt-1 block">
+                  Valid range: 1 to 30 days
+                </span>
+              </div>
+
+              <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200">
+                <label className="block text-xs font-extrabold uppercase text-gray-700 mb-2">
+                  2. Number of Travellers *
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="50"
+                  required
+                  value={formData.travelers}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      travelers: e.target.value === '' ? '' : parseInt(e.target.value, 10)
+                    })
+                  }
+                  className="w-full p-3 bg-white border border-gray-300 rounded-xl font-extrabold text-lg text-gray-900 focus:ring-2 focus:ring-blue-500"
+                />
+                <span className="text-[11px] text-gray-500 mt-1 block">
+                  Adults & accompanied guests (1–50)
+                </span>
+              </div>
+
+              <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200">
+                <label className="block text-xs font-extrabold uppercase text-gray-700 mb-2">
+                  Planned Start Date
+                </label>
+                <input
+                  type="date"
+                  value={formData.startDate}
+                  onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                  className="w-full p-3 bg-white border border-gray-300 rounded-xl font-bold text-sm text-gray-900 focus:ring-2 focus:ring-blue-500"
+                />
+                <span className="text-[11px] text-gray-500 mt-1 block">
+                  Used for calendar & holiday alignment
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION 2: Preferred Travel Environments (Multi-Select) */}
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end border-b border-gray-100 pb-3 gap-2">
+              <div>
+                <span className="text-xs font-extrabold uppercase tracking-wider text-blue-600">
+                  Step 2 of 5
+                </span>
+                <h2 className="text-2xl font-extrabold text-gray-900">
+                  4. Preferred Travel Environments (Multiple Selection) *
+                </h2>
+                <p className="text-xs text-gray-500">
+                  Select all Sri Lankan landscapes you want our recommendation engine to prioritize.
+                </p>
+              </div>
+              <span className="text-xs font-bold text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
+                {formData.environments.length} Selected
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+              {ENVIRONMENT_OPTIONS.map((env) => {
+                const Icon = env.icon;
+                const isSelected = formData.environments.includes(env.name);
+                return (
+                  <button
+                    key={env.name}
+                    type="button"
+                    onClick={() => toggleEnvironment(env.name)}
+                    className={`p-4 rounded-2xl border-2 text-left transition-all flex flex-col justify-between ${
+                      isSelected
+                        ? 'border-blue-600 bg-blue-50/60 shadow-sm ring-2 ring-blue-100'
+                        : 'border-gray-200 hover:border-blue-300 bg-white'
+                    }`}
+                  >
+                    <div className="flex justify-between items-start w-full mb-2">
+                      <div
+                        className={`w-9 h-9 rounded-xl flex items-center justify-center ${
+                          isSelected ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'
+                        }`}
+                      >
+                        <Icon size={18} />
+                      </div>
+                      {isSelected && (
+                        <span className="bg-blue-600 text-white rounded-full p-0.5">
+                          <Check size={13} />
+                        </span>
+                      )}
                     </div>
-                    <span className="text-xs font-semibold text-gray-500 mt-1 hidden sm:block">{s.label}</span>
+                    <div>
+                      <h4 className="font-bold text-sm text-gray-900">{env.name}</h4>
+                      <p className="text-[11px] text-gray-500 mt-0.5 leading-snug">{env.desc}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* SECTION 3: Preferred Meal Type & Preferred Weather */}
+          <div className="grid lg:grid-cols-2 gap-8">
+            {/* 3. Preferred Meal Type */}
+            <div className="space-y-3">
+              <div className="border-b border-gray-100 pb-2">
+                <h3 className="text-lg font-extrabold text-gray-900 flex items-center gap-2">
+                  <Utensils size={18} className="text-blue-600" />
+                  3. Preferred Meal Type *
+                </h3>
+                <p className="text-xs text-gray-500">
+                  Used for daily itinerary dining recommendations and package meal planning.
+                </p>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-3">
+                {MEAL_OPTIONS.map((meal) => {
+                  const isSelected = formData.mealType === meal.name;
+                  return (
+                    <div
+                      key={meal.name}
+                      onClick={() => setFormData({ ...formData, mealType: meal.name })}
+                      className={`p-3.5 rounded-2xl border-2 cursor-pointer transition ${
+                        isSelected
+                          ? 'border-blue-600 bg-blue-50/50 shadow-sm'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold text-sm text-gray-900">{meal.name}</span>
+                        {isSelected && <Check size={16} className="text-blue-600" />}
+                      </div>
+                      <p className="text-[11px] text-gray-500 mt-1">{meal.desc}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 5. Preferred Weather */}
+            <div className="space-y-3">
+              <div className="border-b border-gray-100 pb-2">
+                <h3 className="text-lg font-extrabold text-gray-900 flex items-center gap-2">
+                  <CloudSun size={18} className="text-blue-600" />
+                  5. Preferred Weather *
+                </h3>
+                <p className="text-xs text-gray-500">
+                  Matches Sri Lanka’s climatic zones (Cool hill country vs Hot tropical coast).
+                </p>
+              </div>
+              <div className="grid sm:grid-cols-3 gap-3">
+                {WEATHER_OPTIONS.map((w) => {
+                  const isSelected = formData.weatherPreference === w.name;
+                  return (
+                    <div
+                      key={w.name}
+                      onClick={() => setFormData({ ...formData, weatherPreference: w.name })}
+                      className={`p-3.5 rounded-2xl border-2 cursor-pointer transition flex flex-col justify-between ${
+                        isSelected
+                          ? 'border-blue-600 bg-blue-50/50 shadow-sm'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="font-bold text-sm text-gray-900">{w.name}</span>
+                        {isSelected && <Check size={16} className="text-blue-600" />}
+                      </div>
+                      <p className="text-[11px] text-gray-500 leading-snug">{w.desc}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION 4: Transportation & Guide Requirement */}
+          <div className="grid lg:grid-cols-2 gap-8">
+            {/* 6. Transportation */}
+            <div className="space-y-3">
+              <div className="border-b border-gray-100 pb-2">
+                <h3 className="text-lg font-extrabold text-gray-900 flex items-center gap-2">
+                  <Car size={18} className="text-blue-600" />
+                  6. Transportation Mode *
+                </h3>
+                <p className="text-xs text-gray-500">
+                  Determines road travel time estimates and route calculations.
+                </p>
+              </div>
+              <div className="grid sm:grid-cols-3 gap-3">
+                {TRANSPORT_OPTIONS.map((tr) => {
+                  const isSelected = formData.transportation === tr.name;
+                  return (
+                    <div
+                      key={tr.name}
+                      onClick={() => setFormData({ ...formData, transportation: tr.name })}
+                      className={`p-3.5 rounded-2xl border-2 cursor-pointer transition ${
+                        isSelected
+                          ? 'border-blue-600 bg-blue-50/50 shadow-sm'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="font-bold text-sm text-gray-900">{tr.name}</span>
+                        {isSelected && <Check size={16} className="text-blue-600" />}
+                      </div>
+                      <p className="text-[11px] text-gray-500 leading-snug">{tr.desc}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 7. Guide Requirement */}
+            <div className="space-y-3">
+              <div className="border-b border-gray-100 pb-2">
+                <h3 className="text-lg font-extrabold text-gray-900 flex items-center gap-2">
+                  <Compass size={18} className="text-blue-600" />
+                  7. Tour Guide Requirement *
+                </h3>
+                <p className="text-xs text-gray-500">
+                  Choose whether you require a licensed Sri Lankan tour guide.
+                </p>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-3">
+                {[
+                  {
+                    name: 'Required',
+                    desc: 'Accompanied by a licensed National/Chauffeur Tour Guide'
+                  },
+                  {
+                    name: 'Not required',
+                    desc: 'Independent exploration with dedicated transport driver'
+                  }
+                ].map((gOpt) => {
+                  const isSelected = formData.guideRequirement === gOpt.name;
+                  return (
+                    <div
+                      key={gOpt.name}
+                      onClick={() => {
+                        setFormData({ ...formData, guideRequirement: gOpt.name });
+                        updateCustomizations({ addGuide: gOpt.name === 'Required' });
+                      }}
+                      className={`p-3.5 rounded-2xl border-2 cursor-pointer transition ${
+                        isSelected
+                          ? 'border-blue-600 bg-blue-50/50 shadow-sm'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="font-bold text-sm text-gray-900">{gOpt.name}</span>
+                        {isSelected && <Check size={16} className="text-blue-600" />}
+                      </div>
+                      <p className="text-[11px] text-gray-500 leading-snug">{gOpt.desc}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION 5: Package Level (Basic, Standard, Premium) */}
+          <div className="space-y-4">
+            <div className="border-b border-gray-100 pb-2">
+              <span className="text-xs font-extrabold uppercase tracking-wider text-blue-600">
+                Step 5 of 5
+              </span>
+              <h2 className="text-2xl font-extrabold text-gray-900">
+                8. Select Package Level (Basic, Standard, or Premium) *
+              </h2>
+              <p className="text-xs text-gray-500">
+                Compatible with Module 3 Tour Packages & Pricing rules.
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-4">
+              {availablePackages.map((pkg) => {
+                const isSelected = formData.packageLevel === pkg.packageName;
+                return (
+                  <div
+                    key={pkg._id}
+                    onClick={() => handleSelectPackageLevel(pkg)}
+                    className={`p-5 rounded-2xl border-2 cursor-pointer transition-all ${
+                      isSelected
+                        ? 'border-blue-600 bg-blue-50/40 shadow-md ring-2 ring-blue-100'
+                        : 'border-gray-200 hover:border-gray-300 bg-white'
+                    }`}
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="text-xs font-bold uppercase tracking-wider text-blue-700 bg-blue-100/70 px-2.5 py-0.5 rounded-full">
+                        {pkg.badge || pkg.packageName}
+                      </span>
+                      {isSelected && <Check size={18} className="text-blue-600" />}
+                    </div>
+
+                    <h3 className="text-lg font-extrabold text-gray-900">
+                      {pkg.packageName} Package
+                    </h3>
+                    <div className="text-2xl font-extrabold text-gray-900 my-1">
+                      ${pkg.baseCharge}{' '}
+                      <span className="text-xs font-normal text-gray-500">/ person/day</span>
+                    </div>
+                    <p className="text-xs text-gray-600 mb-3 line-clamp-2">{pkg.description}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Optional: Transparent Rule-Based Scoring Weights Configurator */}
+          <div className="bg-slate-50 rounded-2xl border border-slate-200 p-4">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
+                <Sliders size={15} className="text-blue-600" />
+                <span>
+                  Recommendation Engine Scoring Weights (Interest {scoringWeights.interest}% • Proximity {scoringWeights.proximity}% • Rating {scoringWeights.rating}% • Popularity {scoringWeights.popularity}% • Weather {scoringWeights.weather}% • Visit Time {scoringWeights.visitTime}%)
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowWeightsConfig(!showWeightsConfig)}
+                className="text-xs font-bold text-blue-600 hover:underline"
+              >
+                {showWeightsConfig ? 'Hide Weights' : 'Customize Weights'}
+              </button>
+            </div>
+
+            {showWeightsConfig && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 mt-4 pt-3 border-t border-slate-200 text-xs">
+                {[
+                  { key: 'interest', label: 'Interest Match (%)' },
+                  { key: 'proximity', label: 'Proximity (%)' },
+                  { key: 'rating', label: 'Rating (%)' },
+                  { key: 'popularity', label: 'Popularity (%)' },
+                  { key: 'weather', label: 'Weather (%)' },
+                  { key: 'visitTime', label: 'Visit Time (%)' }
+                ].map((w) => (
+                  <div key={w.key}>
+                    <label className="block font-semibold text-gray-600 mb-1">{w.label}</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={scoringWeights[w.key]}
+                      onChange={(e) =>
+                        setScoringWeights({
+                          ...scoringWeights,
+                          [w.key]: Math.max(0, parseInt(e.target.value, 10) || 0)
+                        })
+                      }
+                      className="w-full p-2 border border-gray-300 rounded-lg font-bold"
+                    />
                   </div>
                 ))}
               </div>
+            )}
+          </div>
 
-              {/* STEP 1: PACKAGE SELECTOR & TRIP BASICS */}
-              {step === 1 && (
-                <div className="space-y-8 animate-fadeIn">
-                  
-                  {/* Package Selector Cards */}
-                  <div>
-                    <div className="flex justify-between items-center mb-4">
-                      <div>
-                        <h2 className="text-2xl font-bold text-gray-900">1. Select Your Tour Package</h2>
-                        <p className="text-sm text-gray-500">Each package tier defines your travel facilities and inclusion rules.</p>
-                      </div>
-                      {activePackage && (
-                        <span className="text-xs font-bold text-green-700 bg-green-50 px-3 py-1 rounded-full border border-green-200">
-                          Active: {activePackage.packageName}
-                        </span>
-                      )}
-                    </div>
+          {/* Preference Confirmation Summary Box & Submit Button */}
+          <div className="bg-blue-950 text-white p-6 rounded-2xl flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+            <div className="space-y-1">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-yellow-400">
+                Selected Preference Summary
+              </span>
+              <h4 className="text-lg font-extrabold">
+                {formData.travelDays || 0} Days • {formData.travelers || 0} Travellers •{' '}
+                {formData.packageLevel} Package (${currentCost.grandTotal} Est.)
+              </h4>
+              <p className="text-xs text-blue-200">
+                <strong>Environments:</strong>{' '}
+                {formData.environments.length > 0
+                  ? formData.environments.join(', ')
+                  : 'None selected'}{' '}
+                | <strong>Meal:</strong> {formData.mealType} | <strong>Weather:</strong>{' '}
+                {formData.weatherPreference} | <strong>Transport:</strong>{' '}
+                {formData.transportation} | <strong>Guide:</strong> {formData.guideRequirement}
+              </p>
+            </div>
 
-                    <div className="grid md:grid-cols-3 gap-4">
-                      {availablePackages.map(pkg => {
-                        const isSelected = activePackage && activePackage.packageName === pkg.packageName;
-                        return (
-                          <div 
-                            key={pkg._id}
-                            onClick={() => selectPackage(pkg)}
-                            className={`p-5 rounded-2xl border-2 cursor-pointer transition-all ${isSelected ? 'border-blue-600 bg-blue-50/40 shadow-md ring-2 ring-blue-100' : 'border-gray-200 hover:border-gray-300 bg-white'}`}
-                          >
-                            <div className="flex justify-between items-start mb-2">
-                              <span className="text-xs font-bold uppercase tracking-wider text-blue-700 bg-blue-100/60 px-2.5 py-0.5 rounded-full">
-                                {pkg.badge || pkg.packageName}
-                              </span>
-                              {isSelected && <Check size={18} className="text-blue-600" />}
-                            </div>
-
-                            <h3 className="text-lg font-bold text-gray-900">{pkg.packageName} Package</h3>
-                            <div className="text-2xl font-extrabold text-gray-900 my-1">
-                              ${pkg.baseCharge} <span className="text-xs font-normal text-gray-500">/ person/day</span>
-                            </div>
-
-                            <p className="text-xs text-gray-600 mb-3 line-clamp-2">{pkg.description}</p>
-
-                            {/* Package Rule Tags */}
-                            <div className="space-y-1 text-xs pt-2 border-t border-gray-100">
-                              <div className="flex items-center text-gray-700">
-                                <Car size={13} className="text-blue-600 mr-1.5 flex-shrink-0" />
-                                <span>Transport: Standard Dedicated</span>
-                              </div>
-                              <div className="flex items-center text-gray-700">
-                                <Home size={13} className={pkg.packageName === 'Basic' ? 'text-gray-400 mr-1.5 flex-shrink-0' : 'text-blue-600 mr-1.5 flex-shrink-0'} />
-                                <span className={pkg.packageName === 'Basic' ? 'text-gray-400' : 'font-medium'}>
-                                  Stays: {pkg.packageName === 'Basic' ? 'Excluded' : 'Included'}
-                                </span>
-                              </div>
-                              <div className="flex items-center text-gray-700">
-                                <Utensils size={13} className={pkg.packageName === 'Premium' ? 'text-green-600 mr-1.5 flex-shrink-0' : 'text-gray-400 mr-1.5 flex-shrink-0'} />
-                                <span className={pkg.packageName === 'Premium' ? 'text-green-700 font-bold' : 'text-gray-400'}>
-                                  Meals: {pkg.packageName === 'Premium' ? 'Included (Choice)' : 'Excluded by default'}
-                                </span>
-                              </div>
-                              <div className="flex items-center text-gray-700">
-                                <Compass size={13} className={pkg.packageName === 'Premium' ? 'text-purple-600 mr-1.5 flex-shrink-0' : pkg.packageName === 'Standard' ? 'text-blue-600 mr-1.5 flex-shrink-0' : 'text-gray-400 mr-1.5 flex-shrink-0'} />
-                                <span>
-                                  Guide: {pkg.packageName === 'Premium' ? 'Included (Specialist)' : pkg.packageName === 'Standard' ? 'Optional Add-on' : 'Excluded'}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Trip Basics Inputs */}
-                  <div className="pt-4 border-t border-gray-100">
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">Trip Duration & Party Size</h3>
-                    <div className="grid md:grid-cols-2 gap-6">
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Duration (Days)</label>
-                        <input 
-                          type="number" 
-                          min="1" 
-                          max="30" 
-                          className="w-full p-3.5 border border-gray-300 rounded-xl focus:ring-blue-500 focus:border-blue-500 font-bold text-gray-900" 
-                          value={formData.days} 
-                          onChange={e => setFormData({ ...formData, days: Math.max(1, parseInt(e.target.value) || 1) })} 
-                        />
-                        <span className="text-xs text-gray-500 mt-1 block">Number of days to tour Sri Lanka</span>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Number of Travelers</label>
-                        <input 
-                          type="number" 
-                          min="1" 
-                          max="20" 
-                          className="w-full p-3.5 border border-gray-300 rounded-xl focus:ring-blue-500 focus:border-blue-500 font-bold text-gray-900" 
-                          value={formData.travelers} 
-                          onChange={e => setFormData({ ...formData, travelers: Math.max(1, parseInt(e.target.value) || 1) })} 
-                        />
-                        <span className="text-xs text-gray-500 mt-1 block">Adults and accompanied guests</span>
-                      </div>
-                    </div>
-                  </div>
-
-                </div>
+            <button
+              type="submit"
+              disabled={loadingRecs}
+              className="px-8 py-4 bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-extrabold rounded-xl shadow-lg transition flex items-center gap-2 whitespace-nowrap text-sm"
+            >
+              {loadingRecs ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-slate-950 border-t-transparent" />
+                  Scoring Destinations...
+                </>
+              ) : (
+                <>
+                  <Sparkles size={18} /> Get Personalized Recommendations &rarr;
+                </>
               )}
+            </button>
+          </div>
+        </form>
+      )}
 
-              {/* STEP 2: INTERESTS & DINING RULES */}
-              {step === 2 && (
-                <div className="space-y-8 animate-fadeIn">
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-900 mb-1">2. Destinations of Interest</h2>
-                    <p className="text-sm text-gray-500">Pick the travel categories that appeal to you:</p>
-                    
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mt-4">
-                      {['Cultural', 'Mountain', 'Beach', 'Wildlife', 'Forest'].map(cat => (
-                        <button
-                          key={cat}
-                          type="button"
-                          onClick={() => toggleInterest(cat)}
-                          className={`p-3.5 rounded-xl border-2 font-bold text-sm transition-all flex flex-col items-center justify-center gap-1.5 ${formData.interests.includes(cat) ? 'border-blue-600 bg-blue-50 text-blue-800 shadow-sm' : 'border-gray-200 text-gray-700 hover:border-gray-300'}`}
-                        >
-                          <span>{cat}</span>
-                          {formData.interests.includes(cat) && <Check size={14} className="text-blue-600" />}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* FOOD & DINING SECTION - RULE SPECIFIC */}
-                  <div className="pt-6 border-t border-gray-100">
-                    <h3 className="text-xl font-bold text-gray-900 mb-2 flex items-center gap-2">
-                      <Utensils size={20} className="text-blue-600" /> 
-                      Food and Meal Services
-                    </h3>
-
-                    {/* BASIC PACKAGE FOOD RULE */}
-                    {activePackage?.packageName === 'Basic' && (
-                      <div className="bg-amber-50/70 border border-amber-200 p-5 rounded-2xl flex items-start gap-3">
-                        <AlertCircle className="text-amber-600 mt-0.5 flex-shrink-0" size={20} />
-                        <div>
-                          <h4 className="font-bold text-amber-900 text-sm">Meals are NOT included in the Basic Package</h4>
-                          <p className="text-xs text-amber-800/80 mt-1 leading-relaxed">
-                            The Basic Package focuses strictly on standard transport. Tourists arrange all meals, lunches, and beverages independently.
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* STANDARD PACKAGE FOOD RULE */}
-                    {activePackage?.packageName === 'Standard' && (
-                      <div className="bg-blue-50/70 border border-blue-200 p-5 rounded-2xl flex items-start gap-3">
-                        <Info className="text-blue-600 mt-0.5 flex-shrink-0" size={20} />
-                        <div>
-                          <h4 className="font-bold text-blue-900 text-sm">Food & Meals are Excluded by Default</h4>
-                          <p className="text-xs text-blue-800/80 mt-1 leading-relaxed">
-                            The Standard Package covers hotel accommodation and standard transport. Meals are excluded by default, giving you total freedom to taste street foods and local cafes at your leisure.
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* PREMIUM PACKAGE FOOD SELECTION */}
-                    {activePackage?.packageName === 'Premium' && (
-                      <div className="space-y-4">
-                        <div className="bg-purple-50/60 border border-purple-200 p-4 rounded-xl flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Sparkles className="text-purple-600" size={18} />
-                            <span className="text-xs font-bold text-purple-900">
-                              Premium Rule: Choose your preferred food or meal option
-                            </span>
-                          </div>
-                          <span className="text-xs font-semibold text-purple-700">Full-Board Dining Included</span>
-                        </div>
-
-                        <div className="grid md:grid-cols-2 gap-3">
-                          {activePackage.mealOptions?.map((meal, idx) => {
-                            const isSelected = customizations.selectedMealOption === meal.name;
-                            return (
-                              <div
-                                key={idx}
-                                onClick={() => updateCustomizations({ selectedMealOption: meal.name })}
-                                className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${isSelected ? 'border-purple-600 bg-white shadow-md' : 'border-gray-200 bg-gray-50/50 hover:border-purple-300'}`}
-                              >
-                                <div className="flex justify-between items-start mb-1">
-                                  <label className="font-bold text-sm text-gray-900 cursor-pointer flex items-center gap-2">
-                                    <input 
-                                      type="radio" 
-                                      name="plannerMealOption" 
-                                      checked={isSelected}
-                                      onChange={() => updateCustomizations({ selectedMealOption: meal.name })}
-                                      className="text-purple-600 focus:ring-purple-500" 
-                                    />
-                                    {meal.name}
-                                  </label>
-                                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${meal.extraCostPerDay > 0 ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800'}`}>
-                                    {meal.extraCostPerDay > 0 ? `+$${meal.extraCostPerDay}/day` : 'Included'}
-                                  </span>
-                                </div>
-                                <p className="text-xs text-gray-500 ml-5">{meal.description}</p>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-
-                  </div>
-                </div>
-              )}
-
-              {/* STEP 3: TRANSPORT & TOUR GUIDE SELECTION */}
-              {step === 3 && (
-                <div className="space-y-8 animate-fadeIn">
-                  
-                  {/* Transport Preferences */}
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-900 mb-1">3. Transport & Guide Arrangements</h2>
-                    <p className="text-sm text-gray-500">Configure your vehicle type and tour guide according to package rules:</p>
-                    
-                    <div className="grid md:grid-cols-2 gap-6 mt-4">
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Vehicle Type</label>
-                        <select 
-                          className="w-full p-3.5 border border-gray-300 rounded-xl font-medium" 
-                          value={formData.vehicleType} 
-                          onChange={e => setFormData({ ...formData, vehicleType: e.target.value })}
-                        >
-                          <option value="Car">Sedan Car (1-3 passengers)</option>
-                          <option value="Van">Passenger Van (4-8 passengers)</option>
-                          <option value="Bus">Mini-Coach (9+ passengers)</option>
-                        </select>
-                        <span className="text-xs text-gray-500 mt-1 block">Private air-conditioned vehicle with licensed driver included in all tiers.</span>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Weather Preference</label>
-                        <select 
-                          className="w-full p-3.5 border border-gray-300 rounded-xl font-medium" 
-                          value={formData.weatherPreference} 
-                          onChange={e => setFormData({ ...formData, weatherPreference: e.target.value })}
-                        >
-                          <option value="Any">Any Weather</option>
-                          <option value="Hot">Tropical / Warm Beaches & Heritage</option>
-                          <option value="Cold">Cool Mountain Highlands (Nuwara Eliya / Ella)</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* TOUR GUIDE RULES PER PACKAGE */}
-                  <div className="pt-6 border-t border-gray-100">
-                    <h3 className="text-xl font-bold text-gray-900 mb-3 flex items-center gap-2">
-                      <Compass size={20} className="text-blue-600" /> 
-                      Tour Guide Arrangements
-                    </h3>
-
-                    {/* BASIC PACKAGE GUIDE RULE */}
-                    {activePackage?.packageName === 'Basic' && (
-                      <div className="bg-amber-50/70 border border-amber-200 p-5 rounded-2xl flex items-start gap-3">
-                        <AlertCircle className="text-amber-600 mt-0.5 flex-shrink-0" size={20} />
-                        <div>
-                          <h4 className="font-bold text-amber-900 text-sm">Tour Guide NOT Included in Basic Package</h4>
-                          <p className="text-xs text-amber-800/80 mt-1 leading-relaxed">
-                            The Basic Package provides standard transport only. Your chauffeur-driver safely navigates the route, but professional guided commentary is not included.
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* STANDARD PACKAGE GUIDE RULE (OPTIONAL ADD-ON) */}
-                    {activePackage?.packageName === 'Standard' && (
-                      <div className="bg-blue-50/80 border border-blue-200 p-6 rounded-2xl space-y-3">
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                          <div>
-                            <span className="text-xs font-bold uppercase tracking-wider text-blue-800 bg-blue-200/70 px-2.5 py-0.5 rounded-full">
-                              Standard Package Rule
-                            </span>
-                            <h4 className="text-lg font-bold text-blue-950 mt-1">Tour Guide is NOT automatically included</h4>
-                            <p className="text-xs text-blue-800/80 mt-1 max-w-xl">
-                              A tour guide is not included by default in the Standard Package, but can be added as an optional service.
-                            </p>
-                          </div>
-
-                          <label className="flex items-center gap-3 cursor-pointer bg-white px-5 py-3 rounded-xl border border-blue-300 shadow-sm hover:border-blue-500 transition-colors">
-                            <input 
-                              type="checkbox"
-                              checked={customizations.addGuide}
-                              onChange={(e) => updateCustomizations({ addGuide: e.target.checked })}
-                              className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 border-gray-300"
-                            />
-                            <div>
-                              <span className="block font-bold text-sm text-gray-900">Add Tour Guide</span>
-                              <span className="text-xs text-blue-700 font-semibold">+${activePackage.guideAddonPrice || 45} / day</span>
-                            </div>
-                          </label>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* PREMIUM PACKAGE GUIDE SELECTION (INCLUDED SPECIALIST) */}
-                    {activePackage?.packageName === 'Premium' && (
-                      <div className="space-y-4">
-                        <div className="bg-purple-50/60 border border-purple-200 p-4 rounded-xl flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Sparkles className="text-purple-600" size={18} />
-                            <span className="text-xs font-bold text-purple-900">
-                              Premium Rule: Select your preferred specialist tour guide
-                            </span>
-                          </div>
-                          <span className="text-xs font-semibold text-purple-700">Dedicated Guide Included</span>
-                        </div>
-
-                        <div className="grid md:grid-cols-2 gap-3">
-                          {activePackage.guideOptions?.map((guide, idx) => {
-                            const isSelected = customizations.selectedGuideOption === guide.name;
-                            return (
-                              <div
-                                key={idx}
-                                onClick={() => updateCustomizations({ selectedGuideOption: guide.name })}
-                                className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${isSelected ? 'border-purple-600 bg-white shadow-md' : 'border-gray-200 bg-gray-50/50 hover:border-purple-300'}`}
-                              >
-                                <div className="flex justify-between items-start mb-1">
-                                  <label className="font-bold text-sm text-gray-900 cursor-pointer flex items-center gap-2">
-                                    <input 
-                                      type="radio" 
-                                      name="plannerGuideOption" 
-                                      checked={isSelected}
-                                      onChange={() => updateCustomizations({ selectedGuideOption: guide.name })}
-                                      className="text-purple-600 focus:ring-purple-500" 
-                                    />
-                                    {guide.name}
-                                  </label>
-                                  <span className="text-xs font-bold bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
-                                    Included
-                                  </span>
-                                </div>
-                                <p className="text-xs text-purple-900/80 font-medium ml-5 mb-1">{guide.specialty}</p>
-                                <p className="text-xs text-gray-500 ml-5">Languages: {guide.languages?.join(', ')}</p>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-
-                  </div>
-                </div>
-              )}
-
-              {/* STEP 4: REVIEW & LIVE ESTIMATED COST BREAKDOWN */}
-              {step === 4 && (
-                <div className="space-y-8 animate-fadeIn">
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-900 mb-1">4. Review & Investment Breakdown</h2>
-                    <p className="text-sm text-gray-500">
-                      Verify your tour configuration and package selections before generating your personalized route.
-                    </p>
-                  </div>
-
-                  {/* Summary Card */}
-                  <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200 space-y-4">
-                    <div className="flex justify-between items-center border-b border-gray-200 pb-4">
-                      <div>
-                        <span className="text-xs font-bold uppercase tracking-wider text-blue-700 bg-blue-100 px-2.5 py-0.5 rounded-full">
-                          {activePackage?.packageName} Package Tier
-                        </span>
-                        <h3 className="text-xl font-extrabold text-gray-900 mt-1">{activePackage?.packageName} Experience</h3>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-xs text-gray-500 block">Duration & Party</span>
-                        <span className="text-sm font-bold text-gray-900">{formData.days} Days • {formData.travelers} Travelers</span>
-                      </div>
-                    </div>
-
-                    {/* Inclusions and Options Status */}
-                    <div className="grid sm:grid-cols-2 gap-4 text-sm">
-                      <div className="flex items-start gap-2.5">
-                        <Car size={18} className="text-blue-600 mt-0.5 flex-shrink-0" />
-                        <div>
-                          <strong className="block text-gray-900">Transport:</strong>
-                          <span className="text-gray-600 text-xs">Standard Private {formData.vehicleType} with chauffeur</span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-start gap-2.5">
-                        <Home size={18} className={activePackage?.packageName === 'Basic' ? 'text-gray-400 mt-0.5 flex-shrink-0' : 'text-blue-600 mt-0.5 flex-shrink-0'} />
-                        <div>
-                          <strong className="block text-gray-900">Accommodation:</strong>
-                          <span className="text-gray-600 text-xs">
-                            {activePackage?.packageName === 'Basic' ? 'Not Included (Self-arranged)' : activePackage?.packageName === 'Standard' ? '3-4★ Quality Hotels Included' : '5★ Luxury Resorts Included'}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-start gap-2.5">
-                        <Utensils size={18} className={activePackage?.packageName === 'Premium' ? 'text-green-600 mt-0.5 flex-shrink-0' : 'text-gray-400 mt-0.5 flex-shrink-0'} />
-                        <div>
-                          <strong className="block text-gray-900">Food & Meals:</strong>
-                          <span className="text-gray-600 text-xs">
-                            {activePackage?.packageName === 'Premium' 
-                              ? `Included: ${customizations.selectedMealOption}` 
-                              : activePackage?.packageName === 'Standard' 
-                              ? 'Excluded by default (Independent dining)' 
-                              : 'Not Included (Self-arranged)'}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-start gap-2.5">
-                        <Compass size={18} className={activePackage?.packageName === 'Premium' || customizations.addGuide ? 'text-purple-600 mt-0.5 flex-shrink-0' : 'text-gray-400 mt-0.5 flex-shrink-0'} />
-                        <div>
-                          <strong className="block text-gray-900">Tour Guide:</strong>
-                          <span className="text-gray-600 text-xs">
-                            {activePackage?.packageName === 'Premium' 
-                              ? `Included: ${customizations.selectedGuideOption}` 
-                              : activePackage?.packageName === 'Standard' && customizations.addGuide 
-                              ? 'Added as optional service ($45/day)' 
-                              : 'Not Included'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Itemized Cost Breakdown Table */}
-                  <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-                    <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                      <DollarSign size={18} className="text-green-600" />
-                      Detailed Cost Calculation
-                    </h4>
-
-                    <div className="space-y-3 text-sm">
-                      <div className="flex justify-between py-1 border-b border-gray-100">
-                        <span className="text-gray-600">
-                          Base Package ({formData.days} days × {formData.travelers} travelers × ${activePackage?.baseCharge || 85}):
-                        </span>
-                        <span className="font-bold text-gray-900">${currentCost.baseTotal}</span>
-                      </div>
-
-                      {currentCost.guideCost > 0 && (
-                        <div className="flex justify-between py-1 border-b border-gray-100 text-blue-700">
-                          <span>Tour Guide Add-on ({formData.days} days × $45):</span>
-                          <span className="font-bold">+${currentCost.guideCost}</span>
-                        </div>
-                      )}
-
-                      {currentCost.mealExtraCost > 0 && (
-                        <div className="flex justify-between py-1 border-b border-gray-100 text-purple-700">
-                          <span>Culinary Selection Premium ({customizations.selectedMealOption}):</span>
-                          <span className="font-bold">+${currentCost.mealExtraCost}</span>
-                        </div>
-                      )}
-
-                      <div className="flex justify-between pt-3 text-lg font-extrabold text-gray-900">
-                        <span>Total Estimated Cost:</span>
-                        <span className="text-2xl text-green-600 font-extrabold">${currentCost.grandTotal}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                </div>
-              )}
-
-              {/* Wizard Nav Buttons */}
-              <div className="flex justify-between pt-6 border-t border-gray-100">
-                {step > 1 ? (
-                  <button 
-                    type="button"
-                    onClick={handlePrev} 
-                    className="px-6 py-2.5 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 font-semibold text-sm transition"
-                  >
-                    Back
-                  </button>
-                ) : <div></div>}
-                
-                {step < 4 ? (
-                  <button 
-                    type="button"
-                    onClick={handleNext} 
-                    className="px-7 py-2.5 bg-blue-600 hover:bg-blue-700 rounded-xl text-white font-bold text-sm shadow-md transition"
-                  >
-                    Next Step &rarr;
-                  </button>
-                ) : (
-                  <button 
-                    type="button"
-                    onClick={handleSubmit} 
-                    disabled={loading} 
-                    className="px-8 py-3 bg-green-600 hover:bg-green-700 rounded-xl text-white font-bold text-base shadow-lg transition flex items-center gap-2"
-                  >
-                    {loading ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                        Generating Itinerary...
-                      </>
-                    ) : (
-                      'Generate Complete Plan ✓'
-                    )}
-                  </button>
-                )}
+      {/* =====================================================================
+          TAB 2: RECOMMENDATION RESULTS & DESTINATION SELECTION (MODULE 1.B & 1.C)
+         ===================================================================== */}
+      {activeTab === 'recommendations' && (
+        <div className="space-y-8">
+          {/* Selected Trip Stops Tray & Reordering Bar */}
+          <div className="bg-white rounded-3xl border-2 border-blue-600 p-6 shadow-md space-y-4">
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border-b border-gray-100 pb-4">
+              <div>
+                <span className="text-xs font-extrabold uppercase tracking-wider text-blue-700 bg-blue-50 px-3 py-1 rounded-full">
+                  Your Selected Trip Stops ({selectedDestinations.length})
+                </span>
+                <h2 className="text-2xl font-extrabold text-gray-900 mt-1">
+                  Organize Your Destinations Before Scheduling
+                </h2>
+                <p className="text-xs text-gray-500">
+                  Add, remove, or reorder destinations below, then generate your day-by-day itinerary or save your recommended plan.
+                </p>
               </div>
 
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('preferences')}
+                  className="px-4 py-2.5 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 font-bold text-xs transition"
+                >
+                  &larr; Edit Preferences
+                </button>
+
+                <button
+                  type="button"
+                  disabled={selectedDestinations.length === 0 || generatingSchedule}
+                  onClick={() => handleGenerateSchedule({ saveImmediately: true, preserveOrder: true })}
+                  className="px-5 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 rounded-xl font-bold text-xs transition disabled:opacity-40"
+                >
+                  Save Recommended Plan
+                </button>
+
+                <button
+                  type="button"
+                  disabled={selectedDestinations.length === 0 || generatingSchedule}
+                  onClick={() => handleGenerateSchedule({ saveImmediately: false, preserveOrder: false })}
+                  className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-extrabold text-xs shadow-lg transition flex items-center gap-2 disabled:opacity-40"
+                >
+                  <Compass size={15} />
+                  {generatingSchedule
+                    ? 'Building Schedule...'
+                    : 'Generate Day-by-Day Itinerary →'}
+                </button>
+              </div>
+            </div>
+
+            {selectedDestinations.length === 0 ? (
+              <div className="text-center py-6 bg-gray-50 rounded-2xl border border-dashed border-gray-200 text-xs text-gray-500">
+                No destinations selected yet. Click <strong>"Add to Trip"</strong> on any recommended destination card below.
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2.5">
+                {selectedDestinations.map((dest, idx) => (
+                  <div
+                    key={dest._id}
+                    className="flex items-center gap-2 bg-blue-50/80 border border-blue-200 rounded-xl px-3 py-2 text-xs"
+                  >
+                    <span className="w-5 h-5 rounded-full bg-blue-600 text-white font-extrabold flex items-center justify-center text-[10px]">
+                      {idx + 1}
+                    </span>
+                    <span className="font-bold text-gray-900">{dest.name}</span>
+                    <span className="text-gray-500">({dest.district})</span>
+
+                    <div className="flex items-center gap-1 ml-1 border-l border-blue-200 pl-1.5">
+                      <button
+                        type="button"
+                        disabled={idx === 0}
+                        onClick={() => handleMoveSelectedStop(idx, 'up')}
+                        title="Move Earlier"
+                        className="text-gray-500 hover:text-blue-700 disabled:opacity-30"
+                      >
+                        <ArrowUp size={13} />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={idx === selectedDestinations.length - 1}
+                        onClick={() => handleMoveSelectedStop(idx, 'down')}
+                        title="Move Later"
+                        className="text-gray-500 hover:text-blue-700 disabled:opacity-30"
+                      >
+                        <ArrowDown size={13} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleSelectDestination(dest)}
+                        title="Remove from Trip"
+                        className="text-red-500 hover:text-red-700 ml-0.5"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Recommendations Grid or Empty State */}
+          {recommendations.length === 0 ? (
+            <div className="text-center py-16 px-6 bg-white rounded-3xl border border-gray-200 shadow-sm max-w-xl mx-auto space-y-4">
+              <Compass size={48} className="mx-auto text-gray-300" />
+              <h3 className="text-xl font-extrabold text-gray-900">
+                No Matching Destinations Found
+              </h3>
+              <p className="text-xs text-gray-500 leading-relaxed">
+                We couldn’t find any destinations matching your exact combination of environments and weather. Try selecting additional travel environments in the Preferences tab.
+              </p>
+              <button
+                type="button"
+                onClick={() => setActiveTab('preferences')}
+                className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-bold text-xs shadow"
+              >
+                Adjust Preferences
+              </button>
             </div>
           ) : (
-            /* FINAL RESULTS VIEW */
-            <div className="space-y-8 animate-fadeIn">
-              
-              {/* Trip Summary Card */}
-              <div className="bg-gradient-to-r from-blue-950 via-blue-900 to-indigo-900 text-white p-8 rounded-3xl shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                <h3 className="text-xl font-extrabold text-gray-900">
+                  Ranked Destination Recommendations ({recommendations.length})
+                </h3>
+                <span className="text-xs text-gray-500">
+                  Scored using Interest Match, Haversine Proximity, Rating, Popularity, Weather & Visit Time
+                </span>
+              </div>
+
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {recommendations.map((recItem) => {
+                  const dest = recItem.destination;
+                  const selIdx = selectedDestinations.findIndex((d) => d._id === dest._id);
+                  const isSelected = selIdx !== -1;
+
+                  return (
+                    <RecommendationCard
+                      key={dest._id}
+                      item={recItem}
+                      isSelected={isSelected}
+                      selectionOrder={isSelected ? selIdx + 1 : null}
+                      onToggleSelect={handleToggleSelectDestination}
+                      onViewOnMap={handleViewOnMap}
+                      onViewDetails={(d, rItem) => setDetailModalDest({ dest: d, rec: rItem })}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Interactive Map Preview of Recommended & Selected Destinations */}
+          {(selectedDestinations.length > 0 || focusedMapDestination) && (
+            <div
+              ref={mapSectionRef}
+              className="bg-white rounded-3xl border border-gray-200 p-6 shadow-sm space-y-4"
+            >
+              <div className="flex justify-between items-center">
                 <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="bg-blue-500/40 text-blue-200 text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full border border-blue-400/30">
-                      {results.packageSnapshot?.packageName} Package
-                    </span>
-                    <span className="text-xs text-blue-200">
-                      {formData.days} Days • {formData.travelers} Travelers
-                    </span>
-                  </div>
-                  <h2 className="text-3xl font-extrabold">Your Personalized Sri Lankan Tour</h2>
-                  <p className="text-blue-200 text-sm mt-1">
-                    Route planned with GPS-enabled coordinates and package facility compliance.
+                  <h3 className="text-lg font-extrabold text-gray-900 flex items-center gap-2">
+                    <Navigation size={18} className="text-blue-600" />
+                    {focusedMapDestination
+                      ? `Map View: ${focusedMapDestination.name} (${focusedMapDestination.district})`
+                      : 'Selected Trip Destinations Map'}
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    Inspect GPS locations across Sri Lanka via OpenStreetMap.
                   </p>
                 </div>
-
-                <div className="bg-white/10 backdrop-blur-md p-5 rounded-2xl border border-white/20 text-center md:text-right min-w-[200px]">
-                  <span className="text-xs uppercase tracking-wider text-blue-200 font-semibold block">Total Estimated Cost</span>
-                  <div className="text-4xl font-extrabold text-green-400 my-1">
-                    ${results.estimatedCost}
-                  </div>
-                  <span className="text-xs text-blue-200 block">All taxes & fees included</span>
-                </div>
-              </div>
-
-              {/* Package Configuration Confirmation Box */}
-              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-                <h3 className="text-lg font-bold text-gray-900 mb-4 pb-2 border-b border-gray-100 flex items-center gap-2">
-                  <ShieldCheck size={20} className="text-green-600" />
-                  Confirmed Package Rules & Inclusions
-                </h3>
-
-                <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-                  <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-100">
-                    <div className="flex items-center gap-1.5 text-blue-700 font-bold mb-1">
-                      <Car size={15} /> Transport
-                    </div>
-                    <p className="text-gray-700 font-medium">Standard Dedicated Vehicle ({formData.vehicleType}) with Chauffeur</p>
-                  </div>
-
-                  <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-100">
-                    <div className="flex items-center gap-1.5 text-blue-700 font-bold mb-1">
-                      <Home size={15} /> Accommodation
-                    </div>
-                    <p className="text-gray-700 font-medium">
-                      {results.packageSnapshot?.packageName === 'Basic' 
-                        ? 'Excluded (Self-arranged)' 
-                        : results.packageSnapshot?.packageName === 'Standard' 
-                        ? '3-4 Star Handpicked Hotels' 
-                        : '5-Star Luxury Resorts & Heritage Villas'}
-                    </p>
-                  </div>
-
-                  <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-100">
-                    <div className="flex items-center gap-1.5 text-purple-700 font-bold mb-1">
-                      <Utensils size={15} /> Food & Meals
-                    </div>
-                    <p className="text-gray-700 font-medium">
-                      {results.packageSnapshot?.packageName === 'Premium' 
-                        ? results.customizationsSnapshot?.selectedMealOption 
-                        : results.packageSnapshot?.packageName === 'Standard' 
-                        ? 'Excluded by default (Local dining)' 
-                        : 'Excluded (Self-arranged)'}
-                    </p>
-                  </div>
-
-                  <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-100">
-                    <div className="flex items-center gap-1.5 text-indigo-700 font-bold mb-1">
-                      <Compass size={15} /> Tour Guide
-                    </div>
-                    <p className="text-gray-700 font-medium">
-                      {results.packageSnapshot?.packageName === 'Premium' 
-                        ? results.customizationsSnapshot?.selectedGuideOption 
-                        : results.customizationsSnapshot?.addGuide 
-                        ? 'Guide Add-on Included ($45/day)' 
-                        : 'None (Self-guided)'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Mapped Itinerary */}
-              <div className="space-y-4">
-                <h3 className="text-xl font-bold text-gray-900 border-b pb-2">Your Interactive Map Route</h3>
-                <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden relative z-0">
-                  <MapView destinations={results.destinations} routeCoordinates={routeCoordinates} />
-                </div>
-                {totalDistance && (
-                  <div className="flex flex-wrap gap-6 p-4 bg-blue-50 rounded-xl text-sm border border-blue-100">
-                    <div className="text-blue-900">
-                      <strong>Total Driving Distance:</strong> {totalDistance}
-                    </div>
-                    <div className="text-blue-900">
-                      <strong>Estimated Road Duration:</strong> {totalDuration}
-                    </div>
-                  </div>
+                {focusedMapDestination && (
+                  <button
+                    type="button"
+                    onClick={() => setFocusedMapDestination(null)}
+                    className="text-xs font-bold text-blue-600 hover:underline"
+                  >
+                    Show All Selected Stops ({selectedDestinations.length})
+                  </button>
                 )}
               </div>
-              
-              {/* Daily Destination Itinerary */}
-              <div className="space-y-4">
-                <h3 className="text-xl font-bold text-gray-900 border-b pb-2">Destinations on Your Schedule</h3>
-                {results.destinations.length === 0 ? (
-                  <p className="text-gray-500 py-4">No destinations matched your criteria entirely, but our tour operators can customize a plan for you!</p>
-                ) : (
-                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {results.destinations.map((dest, idx) => (
-                      <div key={dest._id} className="relative">
-                        <div className="absolute top-2 left-2 z-20 bg-blue-900 text-white text-xs font-bold px-2.5 py-1 rounded-md shadow">
-                          Day {idx + 1}
-                        </div>
-                        <DestinationCard destination={dest} />
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-              
-              {/* Footer Actions */}
-              <div className="pt-6 border-t border-gray-200 flex flex-wrap gap-4 justify-between items-center">
-                <button 
-                  onClick={() => setResults(null)} 
-                  className="px-6 py-2.5 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 font-semibold text-sm transition"
-                >
-                  &larr; Modify Plan Preferences
-                </button>
 
-                <button 
-                  onClick={() => alert(`Your trip plan with the ${results.packageSnapshot?.packageName} Package has been registered! Check your Dashboard for details.`)}
-                  className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg transition text-sm"
-                >
-                  Save Itinerary to Profile
-                </button>
+              <div className="h-[420px] rounded-2xl overflow-hidden border border-gray-200">
+                <MapView
+                  destinations={
+                    focusedMapDestination ? [focusedMapDestination] : selectedDestinations
+                  }
+                  routeCoordinates={focusedMapDestination ? [] : routeCoordinates}
+                />
               </div>
-
             </div>
           )}
         </div>
-      </div>
+      )}
+
+      {/* =====================================================================
+          TAB 3: DAY-BY-DAY SCHEDULE & INTERACTIVE ITINERARY (MODULE 6.A & 6.B)
+         ===================================================================== */}
+      {activeTab === 'schedule' && (
+        <ItineraryManager
+          itineraryData={itineraryData}
+          setItineraryData={setItineraryData}
+          allDestinations={allDestinations}
+          preferences={formData}
+          routeCoordinates={routeCoordinates}
+          totalDistance={totalDistance}
+          totalDuration={totalDuration}
+          loadingRoute={loadingRoute}
+          saving={savingItinerary}
+          regenerating={generatingSchedule}
+          onSaveItinerary={handleSaveItinerary}
+          onRegenerateItinerary={() =>
+            handleGenerateSchedule({ saveImmediately: false, preserveOrder: true })
+          }
+          onOpenCalendar={() => setActiveTab('calendar')}
+        />
+      )}
+
+      {/* =====================================================================
+          TAB 4: TRAVEL CALENDAR & SRI LANKAN PUBLIC HOLIDAYS (MODULE 6.C)
+         ===================================================================== */}
+      {activeTab === 'calendar' && (
+        <TravelCalendar
+          activeItinerary={itineraryData}
+          onSelectPlanToEdit={(planId) => {
+            const found = savedPlans.find((p) => p._id === planId);
+            if (found) handleLoadSavedPlan(found, 'schedule');
+          }}
+        />
+      )}
+
+      {/* =====================================================================
+          TAB 5: SAVED TRAVEL PLANS VIEW
+         ===================================================================== */}
+      {activeTab === 'saved' && (
+        <div className="space-y-6">
+          <div className="bg-white rounded-2xl border border-gray-200 p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider text-blue-600">
+                Private Travel Plans
+              </span>
+              <h2 className="text-2xl font-extrabold text-gray-900 mt-0.5">
+                My Saved Sri Lankan Itineraries ({savedPlans.length})
+              </h2>
+              <p className="text-xs text-gray-500">
+                Persisted in MongoDB. Open any saved plan to customize its schedule or view it on the Travel Calendar.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActiveTab('preferences')}
+              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs shadow transition"
+            >
+              + Create New Plan
+            </button>
+          </div>
+
+          <SavedPlansList
+            savedPlans={savedPlans}
+            loading={loadingSavedPlans}
+            onLoadPlan={(plan) => handleLoadSavedPlan(plan, 'schedule')}
+            onViewInCalendar={(plan) => handleLoadSavedPlan(plan, 'calendar')}
+            onDeletePlan={handleDeleteSavedPlan}
+            onCreateNew={() => setActiveTab('preferences')}
+          />
+        </div>
+      )}
+
+      {/* Destination Details Modal from Recommendations */}
+      {detailModalDest && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 max-w-2xl w-full overflow-hidden">
+            <div className="h-60 bg-slate-900 relative">
+              <img
+                src={detailModalDest.dest.image || detailModalDest.dest.imageUrl}
+                alt={detailModalDest.dest.name}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
+              <button
+                type="button"
+                onClick={() => setDetailModalDest(null)}
+                className="absolute top-4 right-4 bg-black/50 hover:bg-black/75 text-white p-2 rounded-full"
+              >
+                <X size={18} />
+              </button>
+              <div className="absolute bottom-4 left-6 right-6 text-white flex justify-between items-end">
+                <div>
+                  <span className="text-xs font-bold uppercase bg-emerald-600 px-3 py-1 rounded-full">
+                    {detailModalDest.rec?.matchScore || 90}% Match •{' '}
+                    {detailModalDest.dest.category}
+                  </span>
+                  <h3 className="text-3xl font-extrabold mt-1.5">
+                    {detailModalDest.dest.name}
+                  </h3>
+                  <p className="text-xs text-blue-200 flex items-center gap-1">
+                    <MapPin size={13} /> {detailModalDest.dest.district} District, Sri Lanka
+                  </p>
+                </div>
+                {detailModalDest.dest.rating && (
+                  <span className="bg-yellow-400 text-slate-950 font-extrabold text-sm px-3 py-1 rounded-xl flex items-center gap-1">
+                    <Star size={14} className="fill-slate-950" /> {detailModalDest.dest.rating}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="p-6 space-y-4 text-sm">
+              <p className="text-gray-700 leading-relaxed">
+                {detailModalDest.dest.description}
+              </p>
+
+              <div className="grid grid-cols-3 gap-3 bg-gray-50 p-3.5 rounded-xl border border-gray-100 text-xs">
+                <div>
+                  <span className="text-gray-400 block">Best Visit Time</span>
+                  <strong className="text-gray-900">
+                    {detailModalDest.dest.bestVisitTime || 'Morning'}
+                  </strong>
+                </div>
+                <div>
+                  <span className="text-gray-400 block">Est. Duration</span>
+                  <strong className="text-gray-900">
+                    ~{detailModalDest.dest.estimatedDurationHours || 3.5} Hours
+                  </strong>
+                </div>
+                <div>
+                  <span className="text-gray-400 block">Opening Hours</span>
+                  <strong className="text-gray-900">
+                    {detailModalDest.dest.openingHours || '06:00 AM - 06:00 PM'}
+                  </strong>
+                </div>
+              </div>
+
+              {detailModalDest.rec?.reasons && (
+                <div className="bg-blue-50/70 p-4 rounded-xl border border-blue-100 space-y-1.5">
+                  <span className="text-xs font-extrabold uppercase text-blue-900 block">
+                    Why Our Engine Recommended {detailModalDest.dest.name}:
+                  </span>
+                  {detailModalDest.rec.reasons.map((r, i) => (
+                    <div key={i} className="text-xs text-blue-950 flex items-center gap-1.5">
+                      <CheckCircle2 size={13} className="text-emerald-600 flex-shrink-0" />
+                      <span>{r}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex justify-between items-center pt-3 border-t">
+                <Link
+                  to={`/destinations/${detailModalDest.dest._id}`}
+                  className="text-xs font-bold text-blue-600 hover:underline"
+                >
+                  Open Full Destination Page &rarr;
+                </Link>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleToggleSelectDestination(detailModalDest.dest);
+                      setDetailModalDest(null);
+                    }}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold"
+                  >
+                    {selectedDestinations.some((d) => d._id === detailModalDest.dest._id)
+                      ? 'Remove from Trip'
+                      : 'Add to Trip'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDetailModalDest(null)}
+                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-xl text-xs font-bold"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

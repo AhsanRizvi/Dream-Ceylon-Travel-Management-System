@@ -1,6 +1,6 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { AuthContext } from '../context/AuthContext';
-import { Navigate, Link } from 'react-router-dom';
+import { Navigate, Link, useNavigate } from 'react-router-dom';
 import {
   User,
   Map,
@@ -10,16 +10,20 @@ import {
   Trash2,
   Building2,
   Compass,
-  ShieldAlert
+  ShieldAlert,
+  Calendar
 } from 'lucide-react';
 import api from '../services/api';
 import StarRating from '../components/StarRating';
 import ReviewForm from '../components/ReviewForm';
 import AdminReportedReviews from '../components/AdminReportedReviews';
+import SavedPlansList from '../components/SavedPlansList';
 
 const Dashboard = () => {
   const { user, loading } = useContext(AuthContext);
+  const navigate = useNavigate();
   const [myReviews, setMyReviews] = useState([]);
+  const [myItineraries, setMyItineraries] = useState([]);
   const [bookingsCount, setBookingsCount] = useState(0);
   const [loadingReviews, setLoadingReviews] = useState(false);
   const [editingReview, setEditingReview] = useState(null);
@@ -28,12 +32,14 @@ const Dashboard = () => {
     if (!user) return;
     setLoadingReviews(true);
     try {
-      const [revRes, bookRes] = await Promise.all([
-        api.get('/reviews/my-reviews'),
-        api.get('/bookings').catch(() => ({ data: { data: [] } }))
+      const [revRes, bookRes, itinRes] = await Promise.all([
+        api.get('/reviews/my-reviews').catch(() => ({ data: { data: [] } })),
+        api.get('/bookings').catch(() => ({ data: { data: [] } })),
+        api.get('/itineraries').catch(() => ({ data: { data: [] } }))
       ]);
       setMyReviews(revRes.data?.data || []);
       setBookingsCount((bookRes.data?.data || []).length);
+      setMyItineraries(itinRes.data?.data || []);
     } catch (err) {
       console.error('Error loading dashboard data:', err);
     } finally {
@@ -105,6 +111,11 @@ const Dashboard = () => {
                   <Map size={15} /> Smart Journey Planner
                 </Link>
               </li>
+              <li>
+                <Link to="/calendar" className="text-gray-600 hover:text-blue-600 transition flex items-center gap-2">
+                  <Calendar size={15} /> Travel & Holiday Calendar
+                </Link>
+              </li>
             </ul>
           </div>
         </div>
@@ -120,12 +131,13 @@ const Dashboard = () => {
                 <div className="grid md:grid-cols-3 gap-6">
                   <div className="bg-gradient-to-br from-green-500 to-green-600 p-6 rounded-xl text-white shadow-md">
                     <Map className="mb-4 opacity-80" size={32} />
-                    <h4 className="text-lg font-bold">Smart Planner</h4>
+                    <h4 className="text-lg font-bold">Saved Travel Plans</h4>
+                    <p className="text-3xl font-extrabold mt-1">{myItineraries.length}</p>
                     <Link
                       to="/planner"
                       className="text-xs underline text-green-100 mt-2 inline-block"
                     >
-                      Create or view itineraries &rarr;
+                      Create or edit itineraries &rarr;
                     </Link>
                   </div>
                   <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-6 rounded-xl text-white shadow-md">
@@ -139,6 +151,48 @@ const Dashboard = () => {
                     <p className="text-3xl font-extrabold mt-1">{myReviews.length}</p>
                   </div>
                 </div>
+              </div>
+
+              {/* My Saved Travel Plans Section (Modules 1 & 6) */}
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-5">
+                <div className="flex justify-between items-center border-b border-gray-100 pb-4">
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                      <Map size={20} className="text-blue-600" />
+                      My Saved Travel Plans & Itineraries ({myItineraries.length})
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Access your personalized day-by-day Sri Lankan schedules and calendar plans.
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Link
+                      to="/calendar"
+                      className="text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-3 py-2 rounded-xl transition"
+                    >
+                      Open Calendar
+                    </Link>
+                    <Link
+                      to="/planner"
+                      className="text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 px-3.5 py-2 rounded-xl transition"
+                    >
+                      + Plan New Trip
+                    </Link>
+                  </div>
+                </div>
+
+                <SavedPlansList
+                  savedPlans={myItineraries}
+                  loading={loadingReviews}
+                  onLoadPlan={() => navigate('/planner?tab=saved')}
+                  onViewInCalendar={() => navigate('/calendar')}
+                  onDeletePlan={async (planId) => {
+                    if (!window.confirm('Delete this saved travel plan?')) return;
+                    await api.delete(`/itineraries/${planId}`);
+                    fetchTouristDashboardData();
+                  }}
+                  onCreateNew={() => navigate('/planner')}
+                />
               </div>
 
               {/* My Submitted Reviews Section (Module 5) */}

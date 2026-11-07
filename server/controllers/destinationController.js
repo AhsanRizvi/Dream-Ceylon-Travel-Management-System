@@ -1,4 +1,5 @@
 const Destination = require('../models/Destination');
+const { enrichDestinationMetadata } = require('../services/recommendationEngine');
 
 exports.getDestinations = async (req, res) => {
   try {
@@ -6,7 +7,16 @@ exports.getDestinations = async (req, res) => {
     let filter = {};
 
     if (category && category !== 'All') {
-      filter.category = new RegExp(`^${category}$`, 'i');
+      const catLower = category.trim().toLowerCase();
+      if (catLower === 'cultural' || catLower === 'historical') {
+        filter.category = { $in: [/^cultural$/i, /^historical$/i] };
+      } else if (catLower === 'mountain' || catLower === 'mountains') {
+        filter.category = { $in: [/^mountain$/i, /^mountains$/i] };
+      } else if (catLower === 'forest' || catLower === 'nature') {
+        filter.category = { $in: [/^forest$/i, /^nature$/i] };
+      } else {
+        filter.category = new RegExp(`^${category}$`, 'i');
+      }
     }
     if (district && district !== 'All') {
       filter.district = new RegExp(`^${district}$`, 'i');
@@ -22,7 +32,8 @@ exports.getDestinations = async (req, res) => {
     }
 
     const destinations = await Destination.find(filter);
-    res.status(200).json({ success: true, count: destinations.length, data: destinations });
+    const enriched = destinations.map(d => enrichDestinationMetadata(d));
+    res.status(200).json({ success: true, count: enriched.length, data: enriched });
   } catch (err) {
     console.error('Error in getDestinations:', err);
     res.status(500).json({ success: false, error: err.message });
@@ -31,9 +42,13 @@ exports.getDestinations = async (req, res) => {
 
 exports.getDestinationById = async (req, res) => {
   try {
-    const destination = await Destination.findById(req.params.id);
+    const destination = await Destination.findByIdAndUpdate(
+      req.params.id,
+      { $inc: { viewCount: 1 } },
+      { new: true }
+    );
     if (!destination) return res.status(404).json({ success: false, error: 'Not found' });
-    res.status(200).json({ success: true, data: destination });
+    res.status(200).json({ success: true, data: enrichDestinationMetadata(destination) });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
   }
