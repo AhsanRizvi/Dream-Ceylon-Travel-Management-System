@@ -10,7 +10,11 @@ import RoutePlanner from './pages/RoutePlanner';
 import Destinations from './pages/Destinations';
 import DestinationDetails from './pages/DestinationDetails';
 import Hotels from './pages/Hotels';
+import HotelRegister from './pages/HotelRegister';
+import HotelDetails from './pages/HotelDetails';
 import Guides from './pages/Guides';
+import GuideRegister from './pages/GuideRegister';
+import GuideDetails from './pages/GuideDetails';
 import Packages from './pages/Packages';
 import PackageDetails from './pages/PackageDetails';
 import Dashboard from './pages/Dashboard';
@@ -29,7 +33,11 @@ function App() {
           <Route path="/destinations" element={<Destinations />} />
           <Route path="/destinations/:id" element={<DestinationDetails />} />
           <Route path="/hotels" element={<Hotels />} />
+          <Route path="/hotels/register" element={<HotelRegister />} />
+          <Route path="/hotels/:id" element={<HotelDetails />} />
           <Route path="/guides" element={<Guides />} />
+          <Route path="/guides/register" element={<GuideRegister />} />
+          <Route path="/guides/:id" element={<GuideDetails />} />
           <Route path="/packages" element={<Packages />} />
           <Route path="/packages/:id" element={<PackageDetails />} />
           <Route path="/dashboard" element={<Dashboard />} />
