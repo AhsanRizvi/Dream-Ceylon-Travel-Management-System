@@ -443,10 +443,6 @@ const Hotels = () => {
     </span>
   </div>
 </div>
-                      </span>
-                      <span className="block text-[11px] text-blue-100">starting / night</span>
-                    </div>
-                  </div>
                 </div>
 
                 {/* Card Body */}

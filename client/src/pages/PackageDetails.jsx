@@ -737,7 +737,6 @@ const PackageDetails = () => {
             </div>
           </div>
         </div>
-      </div>
     </div>
   );
 };

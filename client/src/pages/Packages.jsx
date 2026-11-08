@@ -2,10 +2,6 @@ import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import PackageCard from '../components/PackageCard';
-import React, { useState, useEffect, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
-import api from '../services/api';
-import PackageCard from '../components/PackageCard';
 import { PackageContext } from '../context/PackageContext';
 import { useCurrency } from '../context/CurrencyContext';
 import {
@@ -67,7 +63,6 @@ const Packages = () => {
   const [livePricing, setLivePricing] = useState(null);
   const [calculating, setCalculating] = useState(false);
 
-  useEffect(() => {
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
