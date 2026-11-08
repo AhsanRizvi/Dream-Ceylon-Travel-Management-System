@@ -1,10 +1,38 @@
+
 const mongoose = require('mongoose');
 
 const TouristProfileSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  travelDays: { type: Number, default: 3, min: 1, max: 30 },
-  travelers: { type: Number, default: 2, min: 1, max: 50 },
-  groupSize: { type: Number, default: 2, min: 1, max: 50 },
+
+  // User details
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+
+  // Travel details
+  travelDays: {
+    type: Number,
+    default: 3,
+    min: 1,
+    max: 30
+  },
+
+  travelers: {
+    type: Number,
+    default: 2,
+    min: 1,
+    max: 50
+  },
+
+  groupSize: {
+    type: Number,
+    default: 2,
+    min: 1,
+    max: 50
+  },
+
+  // Meal preferences
   mealType: {
     type: String,
     enum: [
@@ -18,31 +46,86 @@ const TouristProfileSchema = new mongoose.Schema({
     ],
     default: 'All meat types'
   },
-  environments: [{ type: String }],
-  interests: [{ type: String }],
+
+  // Destination preferences
+  environments: [{
+    type: String
+  }],
+
+  interests: [{
+    type: String
+  }],
+
+  // Weather preferences
   weatherPreference: {
     type: String,
-    enum: ['Cool', 'Hot', 'Cloudy', 'Cold', 'Moderate', 'Any'],
+    enum: [
+      'Cool',
+      'Hot',
+      'Cloudy',
+      'Cold',
+      'Moderate',
+      'Mild',
+      'Any'
+    ],
     default: 'Cool'
   },
+
+  // Transportation preferences
   transportation: {
     type: String,
-    enum: ['Motorcycle', 'Car', 'Van', 'Bus', 'Train', 'Public'],
+    enum: [
+      'Motorcycle',
+      'Car',
+      'Van',
+      'Bus',
+      'Train',
+      'Public'
+    ],
     default: 'Car'
   },
+
+  // Guide preferences
   guideRequirement: {
     type: String,
     enum: ['Required', 'Not required'],
     default: 'Not required'
   },
-  guideRequired: { type: Boolean, default: false },
+
+  guideRequired: {
+    type: Boolean,
+    default: false
+  },
+
+  // Package preferences
   packageLevel: {
     type: String,
     enum: ['Basic', 'Standard', 'Premium'],
     default: 'Standard'
   },
-  startDate: { type: Date },
-  preferredCurrency: { type: String, default: 'USD' }
+
+  selectedPackageId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Package'
+  },
+
+  selectedPackageName: {
+    type: String,
+    enum: ['Basic', 'Standard', 'Premium']
+  },
+
+  // Travel date
+  startDate: {
+    type: Date
+  },
+
+  // Currency preferences
+  preferredCurrency: {
+    type: String,
+    enum: ['LKR', 'USD', 'EUR', 'GBP', 'INR', 'AUD', 'CAD', 'QAR'],
+    default: 'LKR'
+  }
+
 }, { timestamps: true });
 
 module.exports = mongoose.model('TouristProfile', TouristProfileSchema);

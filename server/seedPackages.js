@@ -9,32 +9,54 @@ dotenv.config({ path: path.resolve(__dirname, '.env') });
 const packages = [
   {
     packageName: 'Basic',
-    badge: 'Standard Transport',
-    tagline: 'Standard transport arrangements for independent explorers',
-    description: 'Designed specifically for tourists who only require standard transport facilities across Sri Lanka. Gives you complete freedom to arrange your own lodging, meals, and daily activities independently.',
-    baseCharge: 85,
+
+    badge: 'Route & Transport Essentials',
+    tagline: 'Destination recommendations, day-by-day itinerary & private transport for independent explorers',
+    description:
+      'Includes personalized destination recommendations, turn-by-turn travel route, day-by-day itinerary schedule, basic trip planning assistance, and estimated transportation costs. Hotel accommodation, food, and tour guide services are not automatically included.',
+    currency: 'LKR',
+    baseCharge: 25500,
+    baseChargeLKR: 25500,
+    startingPriceLKR: 25500,
     image: 'https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&w=1200&q=80',
     imageUrl: 'https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&w=1200&q=80',
+
     features: {
-      transport: 'Standard Air-Conditioned Vehicle with Licensed Chauffeur',
+      transport: 'Motorcycle, Sedan Car, or Passenger Van with Route Cost Estimation',
       accommodation: 'Not Included (Self-arranged by tourist)',
       meals: 'Not Included (Self-arranged by tourist)',
-      tourGuide: 'Not Included (Driver only, no guiding services)'
+      tourGuide: 'Not Included (Chauffeur/self-guided only)',
+      nonFoodFacilities: [
+        'Smart destination recommendations & route planning',
+        'Day-by-day itinerary schedule',
+        '24/7 emergency road assistance hotline'
+      ]
+    },
+    inclusions: {
+      destinationsAndItinerary: true,
+      routeAndTransport: true,
+      accommodationIncluded: false,
+      mealsIncluded: false,
+      guideIncluded: false
     },
     includedFacilities: [
-      'Standard air-conditioned vehicle (Sedan / Mini-Van / Van based on group size)',
-      'Dedicated licensed professional chauffeur-driver for the entire itinerary',
+      'Personalized destination recommendations & day-by-day itinerary schedule',
+      'Interactive travel route mapping & distance estimation',
+      'Choice of transportation mode (Motorcycle, Car, or Van)',
       'All vehicle fuel, expressway toll fees, and commercial parking charges',
-      'Airport pickup and drop-off transfers included',
-      'Flexible daily driving hours (up to 8 hours / 200 km per day)',
-      '24/7 on-road breakdown assistance and customer hotline'
+      'Airport pickup and drop-off coordination',
+      '24/7 on-road breakdown assistance and customer support hotline'
     ],
     excludedFacilities: [
-      'No accommodation or hotel stays included',
-      'No food, meals, breakfast, or drinks included',
-      'No tour guide or sightseeing commentary included',
+      'No hotel or accommodation stays included (Rs. 0 accommodation charge)',
+      'No food, meals, breakfast, or dining plans included (Rs. 0 meal charge)',
+      'No tour guide or sightseeing commentary included (Rs. 0 guide charge)',
       'No attraction, museum, or national park entrance tickets'
     ],
+    optionalServices: [
+      'Upgrade vehicle type between Motorcycle, Sedan Car, or KDH Passenger Van'
+    ],
+    allowHotelSelection: false,
     allowGuideAddon: false,
     guideAddonPrice: 0,
     allowMealSelection: false,
@@ -42,68 +64,117 @@ const packages = [
     mealOptions: [],
     guideOptions: [],
     pricingRules: {
-      type: 'per_person_day',
-      transportOnly: true
+      type: 'per_person_day_lkr',
+      baseCurrency: 'LKR',
+      transportOnly: true,
+      tierCoordinationPerPersonDayLKR: 4500
     }
   },
   {
     packageName: 'Standard',
     badge: 'Accommodation & Non-Food Facilities',
-    tagline: 'Comfortable hotel stays and standard transport without mandatory meals',
-    description: 'Combines comfortable hotel accommodations and reliable standard transport with essential non-food travel amenities. Food services are excluded by default so you can dine where you wish. Tour guides can be added as an optional additional service.',
-    baseCharge: 180,
+
+    tagline: 'All Basic features plus partner hotel selection & essential non-food travel amenities',
+    description:
+      'Includes all Basic package features (recommendations, route, day-by-day itinerary, and transport) plus handpicked 3 to 4-star accommodation options, partner hotel & room selection, relevant non-food facilities, and full accommodation cost calculation. Food services are excluded by default; a licensed tour guide can be added optionally.',
+    currency: 'LKR',
+    baseCharge: 54000,
+    baseChargeLKR: 54000,
+    startingPriceLKR: 54000,
     image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1200&q=80',
     imageUrl: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1200&q=80',
+
     features: {
-      transport: 'Dedicated Standard Air-Conditioned Vehicle with Chauffeur',
-      accommodation: 'Handpicked 3 to 4-Star Hotels and Eco-Lodge Stays',
-      meals: 'Excluded by Default (Explore authentic local dining at your leisure)',
-      tourGuide: 'Not Included by default (Optional add-on available)'
+      transport: 'Dedicated Air-Conditioned Vehicle (Motorcycle / Car / Van) with Chauffeur',
+      accommodation: 'Handpicked 3 to 4-Star Partner Hotels & Eco-Lodges (Selectable)',
+      meals: 'Excluded by Default (Explore local dining independently)',
+      tourGuide: 'Not Included by Default (Optional Licensed Guide Add-On Available)',
+      nonFoodFacilities: [
+        'On-board 4G Wi-Fi & bottled mineral water',
+        'Hotel luggage handling, check-in coordination & concierge support',
+        'Expressway tolls, parking & driver accommodation covered'
+      ]
+    },
+    inclusions: {
+      destinationsAndItinerary: true,
+      routeAndTransport: true,
+      accommodationIncluded: true,
+      mealsIncluded: false,
+      guideIncluded: false
     },
     includedFacilities: [
-      'Quality 3 to 4-star hotel accommodations with private ensuite bathrooms',
-      'Standard air-conditioned private vehicle with experienced chauffeur',
+      'All Basic Package features (recommendations, travel route & day-by-day itinerary)',
+      'Quality 3 to 4-star partner hotel accommodations with private ensuite rooms',
+      'Direct Partner Hotel & room type selection with real-time cost calculation',
+      'Relevant non-food facilities: On-board 4G Wi-Fi, bottled water & luggage porterage',
       'All fuel, highway tolls, driver accommodation, and parking costs',
-      'Hotel luggage handling, check-in coordination, and concierge support',
-      'Applicable non-food travel facilities: vehicle Wi-Fi, bottled water & route assistance',
       '24/7 Dream Ceylon travel coordinator support throughout your stay'
     ],
     excludedFacilities: [
-      'Food and meal services are NOT included by default (pay as you dine)',
-      'A tour guide is NOT automatically included (available as an optional add-on)',
-      'Laundry services, minibar expenses, and personal spending',
-      'Optional activity entry fees and safari jeep rentals'
+      'Food and meal services are NOT included by default (no unincluded meal charges)',
+      'Tour guide is NOT automatically included (available as an optional add-on)',
+      'Personal laundry, minibar expenses, and optional safari jeep fees'
     ],
+    optionalServices: [
+      'Select any verified Partner Hotel & room type from the database',
+      'Optional Licensed National Tour Guide add-on (+Rs. 13,500/day or selected guide rate)'
+    ],
+    allowHotelSelection: true,
     allowGuideAddon: true,
-    guideAddonPrice: 45,
+
+    allowGuideAddon: true,
+    guideAddonPrice: 13500,
+
     allowMealSelection: false,
     allowGuideSelection: false,
     mealOptions: [],
     guideOptions: [],
     pricingRules: {
-      type: 'per_person_day',
-      guideAddonRatePerDay: 45
+      type: 'per_person_day_lkr',
+      baseCurrency: 'LKR',
+      tierCoordinationPerPersonDayLKR: 7500,
+      defaultAccommodationPerRoomNightLKR: 36000,
+      guideAddonRatePerDayLKR: 13500
     }
   },
   {
     packageName: 'Premium',
-    badge: 'Complete Travel Experience',
-    tagline: 'All-inclusive luxury with curated dining and specialist guides',
-    description: 'The pinnacle of Sri Lankan hospitality. Enjoy luxury 5-star resort accommodations, executive transport, all gourmet meals tailored to your taste, and your choice of a dedicated specialist tour guide.',
-    baseCharge: 350,
+
+    badge: 'Complete All-Inclusive Experience',
+    tagline: 'All Standard features plus full-board dining, meal preferences & specialist tour guides',
+    description:
+      'The complete Sri Lankan luxury experience. Includes all Standard package features (itinerary, route, transport, and 5-star hotel accommodations) plus full-board food & meal plans (Vegetarian, Vegan, Seafood, All meat types), specialist or registered tour guide selection, guide charges, and complete package cost calculation.',
+    currency: 'LKR',
+    baseCharge: 105000,
+    baseChargeLKR: 105000,
+    startingPriceLKR: 105000,
     image: 'https://images.unsplash.com/photo-1582719508461-905c673771fd?auto=format&fit=crop&w=1200&q=80',
     imageUrl: 'https://images.unsplash.com/photo-1582719508461-905c673771fd?auto=format&fit=crop&w=1200&q=80',
+
     features: {
-      transport: 'Luxury Air-Conditioned SUV / Executive Van with VIP Chauffeur',
-      accommodation: '5-Star Luxury Resorts, Heritage Villas & Tea Bungalows',
-      meals: 'All Gourmet Meals Included (Choose your preferred culinary selection)',
-      tourGuide: 'Dedicated Licensed Tour Guide Included (Choose your specialist)'
+      transport: 'Executive Air-Conditioned Vehicle (Car / VIP Van / Touring Bike) with Chauffeur',
+      accommodation: '5-Star Luxury Resorts, Heritage Villas & Boutique Tea Bungalows',
+      meals: 'Full-Board Gourmet Meals Included (Vegetarian, Vegan, Seafood, All Meat Types)',
+      tourGuide: 'Dedicated Licensed Tour Guide Included (Choose Specialist or Partner Guide)',
+      nonFoodFacilities: [
+        'Airport VIP fast-track lounge & priority baggage handling',
+        'UNESCO heritage site tickets & national park safari permits',
+        'Complimentary Ayurvedic wellness spa session & cultural show pass',
+        'On-board Wi-Fi, refreshments & 24/7 personal travel butler'
+      ]
+    },
+    inclusions: {
+      destinationsAndItinerary: true,
+      routeAndTransport: true,
+      accommodationIncluded: true,
+      mealsIncluded: true,
+      guideIncluded: true
     },
     includedFacilities: [
+      'All Standard Package features (itinerary, route, executive transport & hotel selection)',
       '5-Star luxury resort stays and boutique colonial heritage tea bungalows',
-      'Luxury air-conditioned transport (SUV / VIP Van) with professional chauffeur',
-      'Complete gourmet dining experience: Daily breakfast, lunch, high tea, and dinner',
-      'Full selection of preferred food & meal options (Sri Lankan, Seafood, Halal, Vegan)',
+      'Full-board dining (Breakfast, Lunch & Dinner) tailored to your meal type preference',
+      'Choice of Vegetarian, Vegan, Seafood, or All Meat Types culinary plans',
       'Dedicated licensed National Tour Guide of your choice included',
       'All national park safaris, UNESCO heritage site tickets & cultural passes',
       'Airport VIP fast-track lounge access and priority luggage handling',
@@ -113,6 +184,16 @@ const packages = [
       'International airfares and visa processing fees',
       'Personal shopping and discretionary gratuities'
     ],
+
+    optionalServices: [
+      'Choose specific Partner Hotel & luxury suite from database',
+      'Choose specific certified Tour Guide from database or specialist profile',
+      'Customize daily meal plan (Vegetarian, Vegan, Seafood, All meat types)'
+    ],
+    allowHotelSelection: true,
+    allowGuideAddon: false,
+    guideAddonPrice: 0,
+
     allowGuideAddon: false,
     guideAddonPrice: 0,
     allowMealSelection: true,
@@ -120,28 +201,33 @@ const packages = [
     mealOptions: [
       {
         name: 'Authentic Sri Lankan Culinary Experience',
+        mealType: 'Vegetarian',
         description: 'Traditional clay-pot village curries, hoppers, kottu, coconut sambols & local sweets',
         extraCostPerDay: 0
       },
       {
         name: 'Fresh Coastal Seafood Deluxe',
+        mealType: 'Seafood',
         description: 'Negombo lagoon crab, grilled jumbo tiger prawns, yellowfin tuna steaks & coastal catch',
-        extraCostPerDay: 30
+        extraCostPerDay: 9000 // Rs. 9,000/day (~$30/day)
       },
       {
-        name: 'International Continental & Western Cuisine',
-        description: 'Fine-dining multi-course menus prepared by executive hotel chefs',
-        extraCostPerDay: 15
+        name: 'International Continental & All-Meat Gourmet',
+        mealType: 'All meat types',
+        description: 'Fine-dining multi-course meat, poultry & continental menus prepared by executive chefs',
+        extraCostPerDay: 4500 // Rs. 4,500/day (~$15/day)
       },
       {
         name: 'Vegetarian & Vegan Farm-to-Table Organic Feast',
+        mealType: 'Vegan',
         description: 'Organic seasonal vegetables, young jackfruit curries, tropical salads & herbal teas',
         extraCostPerDay: 0
       },
       {
         name: 'Halal-Certified Gourmet Selection',
+        mealType: 'All meat types',
         description: '100% Halal certified authentic Sri Lankan and international culinary spreads',
-        extraCostPerDay: 10
+        extraCostPerDay: 3000 // Rs. 3,000/day (~$10/day)
       }
     ],
     guideOptions: [
@@ -149,49 +235,77 @@ const packages = [
         name: 'Cultural & Heritage Historian Guide',
         specialty: 'Sigiriya, Anuradhapura, Polonnaruwa, Temple of the Tooth & UNESCO ancient history',
         languages: ['English', 'German', 'Sinhala'],
-        dailyRate: 0
+        dailyRate: 18000
       },
       {
         name: 'Wildlife & Nature Safari Specialist',
         specialty: 'Yala leopard tracking, elephant corridors, birdwatching & Sinharaja rainforest ecology',
         languages: ['English', 'French', 'Sinhala'],
-        dailyRate: 0
+        dailyRate: 18000
       },
       {
         name: 'Adventure, Trekking & Photography Guide',
         specialty: 'Ella Peak, Knuckles Mountain range trails, hidden waterfalls & best photo spots',
         languages: ['English', 'Spanish', 'Sinhala'],
-        dailyRate: 0
+        dailyRate: 18000
       },
       {
         name: 'Executive Multilingual Chauffeur Guide',
         specialty: 'VIP protocol, high-end tea estates, gems & jewelry, luxury coastal hospitality',
         languages: ['English', 'Russian', 'Arabic', 'Sinhala'],
-        dailyRate: 0
+        dailyRate: 21000
       }
     ],
     pricingRules: {
-      type: 'all_inclusive_per_person_day',
+      type: 'all_inclusive_per_person_day_lkr',
+      baseCurrency: 'LKR',
       includesMeals: true,
-      includesGuide: true
+      includesGuide: true,
+      tierCoordinationPerPersonDayLKR: 16500,
+      defaultAccommodationPerRoomNightLKR: 63000,
+      defaultGuideRatePerDayLKR: 18000
     }
   }
 ];
 
 const seedPackages = async () => {
   try {
+
+const seedPackages = async () => {
+  try {
     await connectDB();
-    // Non-destructive safe upsert: only insert missing or update missing fields
+
+    // Safe upsert: update existing packages or insert missing packages
     for (const p of packages) {
       await Package.findOneAndUpdate(
         { packageName: p.packageName },
         { $set: p },
-        { upsert: true, new: true }
+        { upsert: true, new: true, runValidators: true }
       );
     }
+
     const count = await Package.countDocuments();
-    console.log(`Packages Seeded Safely with Updated Rules! Total in DB: ${count}`);
+
+    console.log(
+      `Packages Seeded Safely in LKR! Total in DB: ${count}`
+    );
+
     await mongoose.connection.close();
+    process.exit(0);
+
+  } catch (error) {
+    console.error(`Error: ${error.message}`);
+
+    if (mongoose.connection.readyState !== 0) {
+      await mongoose.connection.close();
+    }
+
+    process.exit(1);
+  }
+};
+
+seedPackages();
+
     process.exit(0);
   } catch (error) {
     console.error(`Error: ${error.message}`);

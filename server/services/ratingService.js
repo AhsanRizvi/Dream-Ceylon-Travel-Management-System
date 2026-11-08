@@ -2,15 +2,17 @@ const mongoose = require('mongoose');
 const Review = require('../models/Review');
 const Guide = require('../models/Guide');
 const Hotel = require('../models/Hotel');
+const Destination = require('../models/Destination');
 
 /**
- * Normalize targetType to lowercase ('guide' or 'hotel')
+ * Normalize targetType to lowercase ('guide', 'hotel', or 'destination')
  */
 const normalizeTargetType = (targetType) => {
   if (!targetType || typeof targetType !== 'string') return null;
   const cleaned = targetType.trim().toLowerCase();
   if (cleaned === 'guide' || cleaned === 'guides') return 'guide';
   if (cleaned === 'hotel' || cleaned === 'hotels') return 'hotel';
+  if (cleaned === 'destination' || cleaned === 'destinations') return 'destination';
   return null;
 };
 
@@ -76,12 +78,15 @@ const recalculateTargetRating = async (targetType, targetId) => {
     };
   }
 
-  // Synchronize rating and reviewCount on the target Guide or Hotel document
-  const TargetModel = normalizedType === 'guide' ? Guide : Hotel;
-  await TargetModel.findByIdAndUpdate(objectId, {
-    rating: stats.averageRating,
+  // Synchronize rating and reviewCount on the target Guide, Hotel, or Destination document
+  const TargetModel = normalizedType === 'guide' ? Guide : normalizedType === 'hotel' ? Hotel : Destination;
+  const updatePayload = {
     reviewCount: stats.totalReviews
-  });
+  };
+  if (stats.totalReviews > 0 || normalizedType !== 'destination') {
+    updatePayload.rating = stats.averageRating;
+  }
+  await TargetModel.findByIdAndUpdate(objectId, updatePayload);
 
   return stats;
 };
@@ -142,10 +147,18 @@ const getPopularTargets = async (targetType, options = {}) => {
     });
   });
 
-  const TargetModel = normalizedType === 'guide' ? Guide : Hotel;
-  const populateField = normalizedType === 'guide' ? { path: 'userId', select: 'name email profileImage' } : { path: 'ownerId', select: 'name email' };
-
-  const targets = await TargetModel.find().populate(populateField).lean();
+  const TargetModel = normalizedType === 'guide' ? Guide : normalizedType === 'hotel' ? Hotel : Destination;
+  const populateField = normalizedType === 'guide'
+    ? { path: 'userId', select: 'name email profileImage' }
+    : normalizedType === 'hotel'
+const ownerPopulate = condition
+  ? { path: 'ownerId', select: 'name email' }
+  : null;
+  let query = TargetModel.find();
+  if (populateField) {
+    query = query.populate(populateField);
+  }
+  const targets = await query.lean();
 
   const enriched = targets
     .map((target) => {
