@@ -30,17 +30,6 @@ import {
   Utensils,
   Compass,
   Check,
-  Sparkles,
-  ShieldCheck,
-  AlertCircle,
-  Info,
-
-import {
-  Car,
-  Home,
-  Utensils,
-  Compass,
-  Check,
   X,
   Sparkles,
   ShieldCheck,
@@ -263,8 +252,6 @@ const VEHICLE_OPTIONS = [
   }
 ];
 
-];
-
 const Planner = () => {
   const { user } = useContext(AuthContext);
 
@@ -374,12 +361,23 @@ const Planner = () => {
   // Route Error State
   const [routeError, setRouteError] = useState(null);
 
-  // Active Package
-  const activePackage =
-    selectedPackage ||
-    availablePackages.find((p) => p.packageName === 'Standard') ||
-    null;
+  // Load Packages, All Destinations, Saved Preferences, and Saved Plans on mount
+  useEffect(() => {
+    const initPlannerData = async () => {
+      try {
+        const [pkgRes, destRes] = await Promise.all([
+          api.get('/packages'),
+          api.get('/destinations')
+        ]);
 
+        const pkgList = pkgRes.data?.data || pkgRes.data || [];
+        const order = { Basic: 1, Standard: 2, Premium: 3 };
+        pkgList.sort((a, b) => (order[a.packageName] || 9) - (order[b.packageName] || 9));
+        setAvailablePackages(pkgList);
+
+        if (!selectedPackage && pkgList.length > 0) {
+          const defaultPkg = pkgList.find((p) => p.packageName === 'Standard') || pkgList[0];
+          selectPackage(defaultPkg);
         }
 
         const destList = destRes.data?.data || destRes.data || [];
@@ -585,7 +583,96 @@ const Planner = () => {
         type: 'error',
         text: 'Please log in to save preferences and generate personalized recommendations.'
       });
+      navigate('/login');
+      return;
+    }
 
+    setLoadingRecs(true);
+    setStatusBanner(null);
+
+    try {
+      const res = await api.post('/planner/recommendations', {
+        ...formData,
+        weights: scoringWeights
+      });
+
+      const recList = res.data?.data || [];
+      setRecommendations(recList);
+
+      // Pre-select the top N recommended destinations (up to travelDays + 1) so the user has an immediate curated set
+      const initialCount = Math.min(recList.length, Math.max(2, Number(formData.travelDays) + 1));
+      const autoSelected = recList.slice(0, initialCount).map((r) => r.destination);
+      setSelectedDestinations(autoSelected);
+
+      setActiveTab('recommendations');
+      setStatusBanner({
+        type: 'success',
+        text: `Found ${recList.length} personalized Sri Lankan destination(s) matching your preferences!`
+      });
+    } catch (err) {
+      const msg =
+        err.response?.data?.error ||
+        err.message ||
+        'Failed to generate destination recommendations.';
+      setValidationError(msg);
+    } finally {
+      setLoadingRecs(false);
+    }
+  };
+
+  // Load initial planner data
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchInitData = async () => {
+      try {
+        const presets = await getPresetStartLocations();
+
+        if (mounted && presets?.length > 0) {
+          setPresetLocations(presets);
+
+          const defaultLocation =
+            presets.find((p) => p.id === 'cmb-airport') || presets[0];
+
+          setStartLocation(defaultLocation);
+        }
+      } catch (err) {
+        console.warn('Using fallback starting locations:', err);
+      }
+
+      try {
+        const [pkgRes, hotelRes, guideRes] = await Promise.all([
+          api.get('/packages', { params: { currency } }),
+          api.get('/hotels', { params: { currency } }).catch(() => ({
+            data: { data: [] }
+          })),
+          api.get('/guides', { params: { currency } }).catch(() => ({
+            data: { data: [] }
+          }))
+        ]);
+
+        if (!mounted) return;
+
+        const packages = pkgRes.data?.data || pkgRes.data || [];
+        const order = { Basic: 1, Standard: 2, Premium: 3 };
+
+        packages.sort(
+          (a, b) =>
+            (order[a.packageName] || 9) -
+            (order[b.packageName] || 9)
+        );
+
+        setAvailablePackages(packages);
+        setPartnerHotels(hotelRes.data?.data || []);
+        setPartnerGuides(guideRes.data?.data || []);
+
+        if (!selectedPackage && packages.length > 0) {
+          const defaultPackage =
+            packages.find((p) => p.packageName === 'Standard') || packages[0];
+
+          selectPackage(defaultPackage);
+        }
+      } catch (err) {
         console.error('Failed to load planner resources:', err);
       }
     };

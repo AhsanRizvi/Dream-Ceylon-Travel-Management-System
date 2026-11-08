@@ -470,9 +470,6 @@ const Guides = () => {
   </span>
   <span className="block text-xs text-gray-500">per day</span>
 </div>
-                      </span>
-                      <span className="block text-xs text-gray-500">per day</span>
-                    </div>
                   </div>
 
                   {guide.bio && (
