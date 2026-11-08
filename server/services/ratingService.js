@@ -151,9 +151,9 @@ const getPopularTargets = async (targetType, options = {}) => {
   const populateField = normalizedType === 'guide'
     ? { path: 'userId', select: 'name email profileImage' }
     : normalizedType === 'hotel'
-    ? { path: 'ownerId', select: 'name email' }
-    : null;
-
+const ownerPopulate = condition
+  ? { path: 'ownerId', select: 'name email' }
+  : null;
   let query = TargetModel.find();
   if (populateField) {
     query = query.populate(populateField);

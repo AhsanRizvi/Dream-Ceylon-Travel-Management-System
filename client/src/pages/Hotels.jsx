@@ -19,6 +19,7 @@ import {
 import api from '../services/api';
 import StarRating from '../components/StarRating';
 import ReviewList from '../components/ReviewList';
+import { useCurrency } from '../context/CurrencyContext';
 
 const FALLBACK_HOTEL_IMAGE =
   'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=900&q=80';
@@ -29,6 +30,7 @@ const formatHotelPrice = (price) => {
 };
 
 const Hotels = () => {
+  const { formatPrice, formatDualPrice } = useCurrency();
   const [hotels, setHotels] = useState([]);
   const [popularHotels, setPopularHotels] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -232,7 +234,9 @@ const Hotels = () => {
                       #{idx + 1} Guest Pick
                     </span>
                     <span className="text-xs text-blue-200 font-semibold">
-                      {formatHotelPrice(h.pricePerNight)}/night
+<span className="text-xs text-blue-200 font-semibold">
+  {formatPrice(h.pricePerNightLKR || h.pricePerNight)}/night
+</span>
                     </span>
                   </div>
                   <h3 className="font-bold text-base mt-2">{h.name}</h3>
@@ -414,21 +418,31 @@ const Hotels = () => {
                     )}
                   </div>
 
-                  <div className="absolute bottom-4 left-5 right-5 flex justify-between items-end text-white">
-                    <div>
-                      <Link
-                        to={`/hotels/${hotel._id}`}
-                        className="text-2xl font-extrabold hover:text-amber-300 transition drop-shadow-xs"
-                      >
-                        {hotel.name}
-                      </Link>
-                      {hotel.address && (
-                        <p className="text-[11px] text-gray-200 line-clamp-1">{hotel.address}</p>
-                      )}
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <span className="text-xl font-extrabold text-amber-300">
-                        {formatHotelPrice(hotel.pricePerNight)}
+<div className="absolute bottom-4 left-5 right-5 flex justify-between items-end text-white">
+  <div>
+    <Link
+      to={`/hotels/${hotel._id}`}
+      className="text-2xl font-extrabold hover:text-amber-300 transition drop-shadow-xs"
+    >
+      {hotel.name}
+    </Link>
+
+    {hotel.address && (
+      <p className="text-[11px] text-gray-200 line-clamp-1">
+        {hotel.address}
+      </p>
+    )}
+  </div>
+
+  <div className="text-right flex-shrink-0">
+    <span className="text-xl font-extrabold text-amber-300">
+      {formatPrice(hotel.pricePerNightLKR || hotel.pricePerNight)}
+    </span>
+    <span className="block text-[11px] text-blue-100">
+      starting / night
+    </span>
+  </div>
+</div>
                       </span>
                       <span className="block text-[11px] text-blue-100">starting / night</span>
                     </div>

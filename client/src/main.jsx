@@ -5,6 +5,7 @@ import './index.css'
 import { BrowserRouter } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { GoogleOAuthProvider } from '@react-oauth/google'
+import { CurrencyProvider } from './context/CurrencyContext'
 import { PackageProvider } from './context/PackageContext'
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -26,9 +27,11 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <GoogleOAuthProvider clientId={clientId}>
       <BrowserRouter>
         <AuthProvider>
-          <PackageProvider>
-            <App />
-          </PackageProvider>
+          <CurrencyProvider>
+            <PackageProvider>
+              <App />
+            </PackageProvider>
+          </CurrencyProvider>
         </AuthProvider>
       </BrowserRouter>
     </GoogleOAuthProvider>

@@ -1,10 +1,11 @@
+
 const express = require('express');
 const path = require('path');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const connectDB = require('./config/db');
 
-// Load env vars
+// Load environment variables
 dotenv.config();
 
 // Connect to database
@@ -12,7 +13,8 @@ connectDB();
 
 const app = express();
 
-// Middleware (10mb limit supports base64 image uploads up to 5MB)
+// Middleware
+// 10MB limit supports base64 image uploads up to 5MB
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cors());
@@ -27,6 +29,8 @@ const destinationRoutes = require('./routes/destinationRoutes');
 const hotelRoutes = require('./routes/hotelRoutes');
 const guideRoutes = require('./routes/guideRoutes');
 const packageRoutes = require('./routes/packageRoutes');
+const pricingRoutes = require('./routes/pricingRoutes');
+const currencyRoutes = require('./routes/currencyRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
 const mapRoutes = require('./routes/mapRoutes');
@@ -41,12 +45,19 @@ app.use('/api/destinations', destinationRoutes);
 app.use('/api/hotels', hotelRoutes);
 app.use('/api/guides', guideRoutes);
 app.use('/api/packages', packageRoutes);
+app.use('/api/pricing', pricingRoutes);
+app.use('/api/currency', currencyRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/maps', mapRoutes);
 app.use('/api/routes', mapRoutes);
 app.use('/api/uploads', uploadRoutes);
 
+// Start server
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(
+    `Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`
+  );
+});

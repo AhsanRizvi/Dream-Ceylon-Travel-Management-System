@@ -1,4 +1,6 @@
 const Hotel = require('../models/Hotel');
+const Hotel = require('../models/Hotel');
+const { normalizeToLKR, getExchangeRates, SUPPORTED_CURRENCIES } = require('../services/currencyService');
 const User = require('../models/User');
 const Booking = require('../models/Booking');
 const Review = require('../models/Review');
@@ -163,6 +165,12 @@ exports.registerHotel = async (req, res) => {
 // @access  Public
 exports.getHotels = async (req, res) => {
   try {
+
+// @desc    Get all hotels with discovery filters and currency conversion
+// @route   GET /api/hotels
+// @access  Public
+exports.getHotels = async (req, res) => {
+  try {
     const {
       district,
       location,
@@ -176,100 +184,172 @@ exports.getHotels = async (req, res) => {
       sortBy
     } = req.query;
 
+    // Currency selection
+    const targetCurrency = (req.query.currency || 'LKR').toUpperCase();
+
+    const validCurrency = SUPPORTED_CURRENCIES[targetCurrency]
+      ? targetCurrency
+      : 'LKR';
+
     const query = {};
 
+    // District / Location filter
     const distFilter = district || location;
+
     if (distFilter && String(distFilter).trim()) {
       const regex = new RegExp(String(distFilter).trim(), 'i');
-      query.$or = [{ district: regex }, { location: regex }];
+
+      query.$or = [
+        { district: regex },
+        { location: regex }
+      ];
     }
 
+    // Price filter
     if (minPrice !== undefined || maxPrice !== undefined) {
       query.pricePerNight = {};
-      if (minPrice !== undefined && minPrice !== '') query.pricePerNight.$gte = Number(minPrice);
-      if (maxPrice !== undefined && maxPrice !== '') query.pricePerNight.$lte = Number(maxPrice);
+
+      if (minPrice !== undefined && minPrice !== '') {
+        query.pricePerNight.$gte = Number(minPrice);
+      }
+
+      if (maxPrice !== undefined && maxPrice !== '') {
+        query.pricePerNight.$lte = Number(maxPrice);
+      }
     }
 
+    // Facility filter
     if (facility && String(facility).trim()) {
       const reqFacilities = parseStringArray(facility);
+
       if (reqFacilities.length > 0) {
         query.facilities = {
-          $all: reqFacilities.map((f) => new RegExp(f, 'i'))
+          $all: reqFacilities.map(
+            (f) => new RegExp(f, 'i')
+          )
         };
       }
     }
 
+    // Room type filter
     if (roomType && String(roomType).trim()) {
-      query['rooms.type'] = { $regex: new RegExp(String(roomType).trim(), 'i') };
+      query['rooms.type'] = {
+        $regex: new RegExp(String(roomType).trim(), 'i')
+      };
     }
 
+    // Rating filter
     if (minRating !== undefined && minRating !== '') {
-      query.rating = { $gte: Number(minRating) };
+      query.rating = {
+        $gte: Number(minRating)
+      };
     }
 
+    // Availability filter
     if (availability === 'true') {
       query.availability = true;
     } else if (availability === 'false') {
       query.availability = false;
     }
 
-    let hotels = await Hotel.find(query).populate('ownerId', 'name email');
+    // Fetch hotels and exchange rates
+    let [hotels, rateData] = await Promise.all([
+      Hotel.find(query).populate('ownerId', 'name email'),
+      getExchangeRates()
+    ]);
 
+    // Search across hotel details
     if (search && String(search).trim()) {
       const q = String(search).toLowerCase().trim();
+
       hotels = hotels.filter((h) => {
         const nameMatch = (h.name || '').toLowerCase().includes(q);
-        const locMatch = (h.location || h.district || '').toLowerCase().includes(q);
+
+        const locMatch = (
+          h.location || h.district || ''
+        ).toLowerCase().includes(q);
+
         const addrMatch = (h.address || '').toLowerCase().includes(q);
-        const descMatch = (h.description || '').toLowerCase().includes(q);
-        const facMatch = (h.facilities || []).some((f) => f.toLowerCase().includes(q));
-        return nameMatch || locMatch || addrMatch || descMatch || facMatch;
+
+        const descMatch = (
+          h.description || ''
+        ).toLowerCase().includes(q);
+
+        const facMatch = (h.facilities || []).some(
+          (f) => f.toLowerCase().includes(q)
+        );
+
+        return (
+          nameMatch ||
+          locMatch ||
+          addrMatch ||
+          descMatch ||
+          facMatch
+        );
       });
     }
 
+    // Sorting
     if (sortBy === 'price_low') {
-      hotels.sort((a, b) => (a.pricePerNight || 0) - (b.pricePerNight || 0));
+      hotels.sort(
+        (a, b) => (a.pricePerNight || 0) - (b.pricePerNight || 0)
+      );
     } else if (sortBy === 'price_high') {
-      hotels.sort((a, b) => (b.pricePerNight || 0) - (a.pricePerNight || 0));
+      hotels.sort(
+        (a, b) => (b.pricePerNight || 0) - (a.pricePerNight || 0)
+      );
     } else if (sortBy === 'rating') {
-      hotels.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+      hotels.sort(
+        (a, b) => (b.rating || 0) - (a.rating || 0)
+      );
     }
+
+    // Currency conversion
+    const rate = validCurrency === 'LKR'
+      ? 1
+      : rateData.rates[validCurrency] || 1;
+
+    const decimals = SUPPORTED_CURRENCIES[validCurrency]?.decimals ?? 2;
+
+    const enriched = hotels.map((h) => {
+      const obj = h.toObject ? h.toObject() : { ...h };
+
+      const pricePerNightLKR = normalizeToLKR(
+        obj.pricePerNight,
+        obj.currency || 'LKR',
+        1000
+      );
+
+      return {
+        ...obj,
+        currency: 'LKR',
+        pricePerNightLKR,
+        pricePerNight: pricePerNightLKR,
+        pricePerNightConverted: Number(
+          (pricePerNightLKR * rate).toFixed(decimals)
+        ),
+        displayCurrency: validCurrency,
+        displayCurrencySymbol:
+          SUPPORTED_CURRENCIES[validCurrency]?.symbol || 'Rs.'
+      };
+    });
 
     res.status(200).json({
       success: true,
-      count: hotels.length,
+      count: enriched.length,
       baseCurrency: 'LKR',
-      data: hotels
+      displayCurrency: validCurrency,
+      data: enriched
     });
+
   } catch (err) {
-    res.status(400).json({ success: false, error: err.message });
+    res.status(400).json({
+      success: false,
+      error: err.message
+    });
   }
 };
 
-// @desc    Get single hotel details by ID
-// @route   GET /api/hotels/:id
-// @access  Public
-exports.getHotelById = async (req, res) => {
-  try {
-    const hotel = await Hotel.findById(req.params.id).populate('ownerId', 'name email');
-    if (!hotel) {
-      return res.status(404).json({ success: false, error: 'Hotel not found' });
-    }
-
-    const confirmedBookings = await Booking.find({
-      hotelId: hotel._id,
-      status: 'Confirmed',
-      checkOutDate: { $gte: new Date() }
-    })
-      .select('roomId roomType roomQuantity checkInDate checkOutDate status')
-      .lean();
-
-    res.status(200).json({
-      success: true,
-      data: {
-        ...hotel.toObject(),
-        confirmedBookings
-      }
     });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
@@ -337,11 +417,56 @@ exports.getMyOwnerHotels = async (req, res) => {
 exports.createHotel = async (req, res) => {
   try {
     req.body.ownerId = req.user.id;
-    if (!req.body.district && req.body.location) req.body.district = req.body.location;
-    if (!req.body.location && req.body.district) req.body.location = req.body.district;
-    if (req.body.facilities) req.body.facilities = parseStringArray(req.body.facilities);
-    if (req.body.photos) req.body.photos = parseStringArray(req.body.photos);
+// @desc    Create hotel (authenticated hotel_owner/admin)
+// @route   POST /api/hotels
+// @access  Private (hotel_owner, admin)
+exports.createHotel = async (req, res) => {
+  try {
+    req.body.ownerId = req.user.id;
 
+    // Normalize hotel price to LKR
+    if (req.body.pricePerNight) {
+      req.body.pricePerNight = normalizeToLKR(
+        req.body.pricePerNight,
+        req.body.currency || 'LKR',
+        1000
+      );
+
+      req.body.currency = 'LKR';
+    }
+
+    // Keep district and location synchronized
+    if (!req.body.district && req.body.location) {
+      req.body.district = req.body.location;
+    }
+
+    if (!req.body.location && req.body.district) {
+      req.body.location = req.body.district;
+    }
+
+    // Convert facilities and photos into arrays
+    if (req.body.facilities) {
+      req.body.facilities = parseStringArray(req.body.facilities);
+    }
+
+    if (req.body.photos) {
+      req.body.photos = parseStringArray(req.body.photos);
+    }
+
+    const hotel = await Hotel.create(req.body);
+
+    res.status(201).json({
+      success: true,
+      data: hotel
+    });
+
+  } catch (err) {
+    res.status(400).json({
+      success: false,
+      error: err.message
+    });
+  }
+};
     const hotel = await Hotel.create(req.body);
     res.status(201).json({ success: true, data: hotel });
   } catch (err) {

@@ -1,19 +1,22 @@
+
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const connectDB = require('./config/db');
+
 const User = require('./models/User');
 const Guide = require('./models/Guide');
 const Hotel = require('./models/Hotel');
 const Destination = require('./models/Destination');
 const Booking = require('./models/Booking');
 const Review = require('./models/Review');
+
 const { recalculateTargetRating } = require('./services/ratingService');
 
 dotenv.config();
-connectDB();
 
 const ensureUser = async ({ name, email, password, role }) => {
   let user = await User.findOne({ email });
+
   if (!user) {
     user = await User.create({
       name,
@@ -22,12 +25,19 @@ const ensureUser = async ({ name, email, password, role }) => {
       role
     });
   }
+
   return user;
 };
 
 const seedServicesAndReviews = async () => {
   try {
-    // 1. Ensure Demo Accounts exist (non-destructive)
+    // Connect to database before running seed operations
+    await connectDB();
+
+    // --------------------------------------------------
+    // 1. Ensure Demo Accounts Exist
+    // --------------------------------------------------
+
     await ensureUser({
       name: 'System Administrator',
       email: 'admin@dreamceylon.lk',
@@ -98,24 +108,39 @@ const seedServicesAndReviews = async () => {
       role: 'hotel_owner'
     });
 
-    // 2. Seed or Enrich Guides with Module 4 fields
+    // --------------------------------------------------
+    // 2. Seed or Enrich Guides
+    // --------------------------------------------------
+
     const guideSeedDefinitions = [
       {
         userId: guideUser1._id,
         name: 'Nimal Bandara',
         email: 'nimal.guide@dreamceylon.lk',
         contactNumber: '+94 77 234 5678',
-        profilePhoto: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=800&q=80',
+        profilePhoto:
+          'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=800&q=80',
         bio: 'National Cultural & UNESCO Heritage Historian with 12+ years guiding across the Cultural Triangle, Kandy, and ancient monastery complexes.',
-        serviceAreas: ['Kandy', 'Sigiriya', 'Anuradhapura', 'Polonnaruwa', 'Dambulla'],
+        serviceAreas: [
+          'Kandy',
+          'Sigiriya',
+          'Anuradhapura',
+          'Polonnaruwa',
+          'Dambulla'
+        ],
         languages: ['English', 'German', 'Sinhala'],
         expertise: ['Cultural', 'Historical', 'Photography'],
         experienceYears: 12,
-        qualifications: ['SLTDA National Tourist Guide License #NTG-1042', 'B.A. in Archaeology (University of Peradeniya)', 'First Aid & Wilderness Safety Certified'],
-        dailyRate: 15000,
+        qualifications: [
+          'SLTDA National Tourist Guide License #NTG-1042',
+          'B.A. in Archaeology (University of Peradeniya)',
+          'First Aid & Wilderness Safety Certified'
+        ],
+        dailyRate: 16500,
         currency: 'LKR',
         availability: true,
-        availabilityNotes: 'Available daily across Central and North Central Provinces. Early morning Sigiriya climbs supported.',
+        availabilityNotes:
+          'Available daily across Central and North Central Provinces. Early morning Sigiriya climbs supported.',
         serviceStatus: 'active'
       },
       {
@@ -123,17 +148,28 @@ const seedServicesAndReviews = async () => {
         name: 'Chaminda Silva',
         email: 'chaminda.guide@dreamceylon.lk',
         contactNumber: '+94 71 876 5432',
-        profilePhoto: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=800&q=80',
+        profilePhoto:
+          'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=800&q=80',
         bio: 'Certified Wildlife Tracker & Hill Country Trekking Specialist covering Yala National Park, Ella, Horton Plains, and Knuckles Range.',
-        serviceAreas: ['Yala', 'Ella', 'Nuwara Eliya', 'Mirissa', 'Udawalawe'],
+        serviceAreas: [
+          'Yala',
+          'Ella',
+          'Nuwara Eliya',
+          'Mirissa',
+          'Udawalawe'
+        ],
         languages: ['English', 'French', 'Sinhala'],
         expertise: ['Wildlife', 'Adventure', 'Trekking', 'Eco Tourism'],
         experienceYears: 9,
-        qualifications: ['SLTDA Chauffeur & Trekking Guide #CTG-2198', 'Department of Wildlife Conservation Field Naturalist Badge'],
+        qualifications: [
+          'SLTDA Chauffeur & Trekking Guide #CTG-2198',
+          'Department of Wildlife Conservation Field Naturalist Badge'
+        ],
         dailyRate: 18000,
         currency: 'LKR',
         availability: true,
-        availabilityNotes: 'Specialized 4x4 safari coordination and mountain trail guiding.',
+        availabilityNotes:
+          'Specialized 4x4 safari coordination and mountain trail guiding.',
         serviceStatus: 'active'
       },
       {
@@ -141,17 +177,28 @@ const seedServicesAndReviews = async () => {
         name: 'Priyantha Fernando',
         email: 'priyantha.guide@dreamceylon.lk',
         contactNumber: '+94 76 345 9876',
-        profilePhoto: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=800&q=80',
+        profilePhoto:
+          'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=800&q=80',
         bio: 'Southern Coast, Galle Fort Dutch Architecture & Sri Lankan Culinary Tour Specialist with luxury chauffeur experience.',
-        serviceAreas: ['Galle', 'Mirissa', 'Bentota', 'Colombo', 'Hikkaduwa'],
+        serviceAreas: [
+          'Galle',
+          'Mirissa',
+          'Bentota',
+          'Colombo',
+          'Hikkaduwa'
+        ],
         languages: ['English', 'Spanish', 'Sinhala'],
         expertise: ['Cultural', 'Culinary', 'Beach & Coastal', 'Historical'],
         experienceYears: 7,
-        qualifications: ['SLTDA Area Guide License (Southern Province)', 'Hospitality & Culinary Heritage Diploma'],
+        qualifications: [
+          'SLTDA Area Guide License (Southern Province)',
+          'Hospitality & Culinary Heritage Diploma'
+        ],
         dailyRate: 13500,
         currency: 'LKR',
         availability: true,
-        availabilityNotes: 'Available for coastal day tours and multi-day southern round trips.',
+        availabilityNotes:
+          'Available for coastal day tours and multi-day southern round trips.',
         serviceStatus: 'active'
       },
       {
@@ -159,49 +206,95 @@ const seedServicesAndReviews = async () => {
         name: 'Anushka Jayawardena',
         email: 'anushka.guide@dreamceylon.lk',
         contactNumber: '+94 77 998 1122',
-        profilePhoto: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80',
+        profilePhoto:
+          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80',
         bio: 'Tea Plantation Heritage, Wellness Retreats & Scenic Train Journey Curator across Nuwara Eliya, Kandy, and East Coast beaches.',
-        serviceAreas: ['Kandy', 'Nuwara Eliya', 'Ella', 'Trincomalee', 'Colombo'],
+        serviceAreas: [
+          'Kandy',
+          'Nuwara Eliya',
+          'Ella',
+          'Trincomalee',
+          'Colombo'
+        ],
         languages: ['English', 'Japanese', 'Sinhala', 'Tamil'],
-        expertise: ['Tea Heritage', 'Wellness & Ayurveda', 'Cultural', 'Photography'],
+        expertise: [
+          'Tea Heritage',
+          'Wellness & Ayurveda',
+          'Cultural',
+          'Photography'
+        ],
         experienceYears: 8,
-        qualifications: ['SLTDA National Guide License #NTG-3081', 'JLPT N2 Japanese Language Proficiency'],
+        qualifications: [
+          'SLTDA National Guide License #NTG-3081',
+          'JLPT N2 Japanese Language Proficiency'
+        ],
         dailyRate: 16500,
         currency: 'LKR',
         availability: true,
-        availabilityNotes: 'Ideal for family, photography, and tea estate immersion tours.',
+        availabilityNotes:
+          'Ideal for family, photography, and tea estate immersion tours.',
         serviceStatus: 'active'
       }
     ];
 
     const guides = [];
+
     for (const def of guideSeedDefinitions) {
       let existing = await Guide.findOne({ name: def.name });
+
       if (!existing) {
         existing = await Guide.create(def);
       } else {
         existing.userId = def.userId;
         existing.email = existing.email || def.email;
-        existing.contactNumber = existing.contactNumber || def.contactNumber;
-        existing.profilePhoto = existing.profilePhoto || def.profilePhoto;
+        existing.contactNumber =
+          existing.contactNumber || def.contactNumber;
+        existing.profilePhoto =
+          existing.profilePhoto || def.profilePhoto;
         existing.bio = existing.bio || def.bio;
-        existing.serviceAreas = existing.serviceAreas?.length ? existing.serviceAreas : def.serviceAreas;
-        existing.languages = existing.languages?.length ? existing.languages : def.languages;
-        existing.expertise = existing.expertise?.length ? existing.expertise : def.expertise;
-        existing.experienceYears = existing.experienceYears || def.experienceYears;
-        existing.qualifications = existing.qualifications?.length ? existing.qualifications : def.qualifications;
+
+        existing.serviceAreas = existing.serviceAreas?.length
+          ? existing.serviceAreas
+          : def.serviceAreas;
+
+        existing.languages = existing.languages?.length
+          ? existing.languages
+          : def.languages;
+
+        existing.expertise = existing.expertise?.length
+          ? existing.expertise
+          : def.expertise;
+
+        existing.experienceYears =
+          existing.experienceYears || def.experienceYears;
+
+        existing.qualifications = existing.qualifications?.length
+          ? existing.qualifications
+          : def.qualifications;
+
+        // Ensure existing guide rates are stored in LKR
         if (!existing.dailyRate || existing.dailyRate < 1000) {
           existing.dailyRate = def.dailyRate;
         }
+
         existing.currency = 'LKR';
-        existing.availabilityNotes = existing.availabilityNotes || def.availabilityNotes;
-        existing.serviceStatus = existing.serviceStatus || 'Active';
+        existing.availabilityNotes =
+          existing.availabilityNotes || def.availabilityNotes;
+        existing.serviceStatus =
+          existing.serviceStatus || def.serviceStatus;
+
         await existing.save();
       }
+
       guides.push(existing);
     }
 
-    // 3. Seed or Enrich Hotels with Module 4 fields
+    console.log(`Guides ready: ${guides.length}`);
+
+    // --------------------------------------------------
+    // 3. Seed or Enrich Hotels
+    // --------------------------------------------------
+
     const hotelSeedDefinitions = [
       {
         ownerId: hotelOwner1._id,
@@ -228,10 +321,18 @@ const seedServicesAndReviews = async () => {
             capacity: 2,
             count: 15,
             bedConfiguration: '1 King Bed',
-            roomFacilities: ['Air Conditioning', 'River Balcony', 'Free Wi-Fi', 'Mini Bar', 'Rain Shower'],
+            roomFacilities: [
+              'Air Conditioning',
+              'River Balcony',
+              'Free Wi-Fi',
+              'Mini Bar',
+              'Rain Shower'
+            ],
             pricePerNight: 32000,
             price: 32000,
-            photos: ['https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=800&q=80'],
+            photos: [
+              'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=800&q=80'
+            ],
             availability: true
           },
           {
@@ -241,14 +342,29 @@ const seedServicesAndReviews = async () => {
             capacity: 4,
             count: 6,
             bedConfiguration: '1 King Bed + 2 Twin Beds',
-            roomFacilities: ['Air Conditioning', 'Living Lounge', 'Free Wi-Fi', 'Bathtub', 'Coffee Maker'],
+            roomFacilities: [
+              'Air Conditioning',
+              'Living Lounge',
+              'Free Wi-Fi',
+              'Bathtub',
+              'Coffee Maker'
+            ],
             pricePerNight: 48000,
             price: 48000,
-            photos: ['https://images.unsplash.com/photo-1578683010236-d716f9a3f461?auto=format&fit=crop&w=800&q=80'],
+            photos: [
+              'https://images.unsplash.com/photo-1578683010236-d716f9a3f461?auto=format&fit=crop&w=800&q=80'
+            ],
             availability: true
           }
         ],
-        facilities: ['Infinity Pool', 'Free Wi-Fi', 'Ayurvedic Spa', 'Riverside Dining', 'Free Parking', 'Airport Shuttle'],
+        facilities: [
+          'Infinity Pool',
+          'Free Wi-Fi',
+          'Ayurvedic Spa',
+          'Riverside Dining',
+          'Free Parking',
+          'Airport Shuttle'
+        ],
         checkInTime: '14:00',
         checkOutTime: '11:00',
         pricePerNight: 32000,
@@ -279,10 +395,17 @@ const seedServicesAndReviews = async () => {
             capacity: 2,
             count: 10,
             bedConfiguration: '1 Queen Canopy Bed',
-            roomFacilities: ['Mountain View Deck', 'Free Wi-Fi', 'Ceylon Tea Bar', 'Heated Rain Shower'],
+            roomFacilities: [
+              'Mountain View Deck',
+              'Free Wi-Fi',
+              'Ceylon Tea Bar',
+              'Heated Rain Shower'
+            ],
             pricePerNight: 45000,
             price: 45000,
-            photos: ['https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&w=800&q=80'],
+            photos: [
+              'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&w=800&q=80'
+            ],
             availability: true
           },
           {
@@ -292,14 +415,28 @@ const seedServicesAndReviews = async () => {
             capacity: 3,
             count: 4,
             bedConfiguration: '1 King Bed + 1 Daybed',
-            roomFacilities: ['Private Plunge Pool', 'Mountain View Deck', 'Free Wi-Fi', 'Butler Service'],
+            roomFacilities: [
+              'Private Plunge Pool',
+              'Mountain View Deck',
+              'Free Wi-Fi',
+              'Butler Service'
+            ],
             pricePerNight: 68000,
             price: 68000,
-            photos: ['https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=800&q=80'],
+            photos: [
+              'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=800&q=80'
+            ],
             availability: true
           }
         ],
-        facilities: ['Mountain View Deck', 'Organic Restaurant', 'Free Wi-Fi', 'Tea Tour', 'Spa & Wellness', 'Helipad'],
+        facilities: [
+          'Mountain View Deck',
+          'Organic Restaurant',
+          'Free Wi-Fi',
+          'Tea Tour',
+          'Spa & Wellness',
+          'Helipad'
+        ],
         checkInTime: '14:00',
         checkOutTime: '11:30',
         pricePerNight: 45000,
@@ -330,10 +467,17 @@ const seedServicesAndReviews = async () => {
             capacity: 2,
             count: 8,
             bedConfiguration: '1 Four-Poster King Bed',
-            roomFacilities: ['Air Conditioning', 'Courtyard Verandah', 'Free Wi-Fi', ' clawfoot Bathtub'],
+            roomFacilities: [
+              'Air Conditioning',
+              'Courtyard Verandah',
+              'Free Wi-Fi',
+              'Clawfoot Bathtub'
+            ],
             pricePerNight: 38000,
             price: 38000,
-            photos: ['https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?auto=format&fit=crop&w=800&q=80'],
+            photos: [
+              'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?auto=format&fit=crop&w=800&q=80'
+            ],
             availability: true
           },
           {
@@ -343,14 +487,27 @@ const seedServicesAndReviews = async () => {
             capacity: 4,
             count: 4,
             bedConfiguration: '2 Queen Beds',
-            roomFacilities: ['Air Conditioning', 'Ocean View', 'Free Wi-Fi', 'Mini Bar'],
+            roomFacilities: [
+              'Air Conditioning',
+              'Ocean View',
+              'Free Wi-Fi',
+              'Mini Bar'
+            ],
             pricePerNight: 54000,
             price: 54000,
-            photos: ['https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=800&q=80'],
+            photos: [
+              'https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=800&q=80'
+            ],
             availability: true
           }
         ],
-        facilities: ['Courtyard Pool', 'Free Wi-Fi', 'Heritage Library', 'Seafood Bistro', 'Guided Fort Walk'],
+        facilities: [
+          'Courtyard Pool',
+          'Free Wi-Fi',
+          'Heritage Library',
+          'Seafood Bistro',
+          'Guided Fort Walk'
+        ],
         checkInTime: '14:00',
         checkOutTime: '11:00',
         pricePerNight: 38000,
@@ -380,10 +537,17 @@ const seedServicesAndReviews = async () => {
             capacity: 2,
             count: 12,
             bedConfiguration: '1 Queen Bed',
-            roomFacilities: ['Air Conditioning', 'Nature Deck', 'Free Wi-Fi', 'Open-Sky Shower'],
+            roomFacilities: [
+              'Air Conditioning',
+              'Nature Deck',
+              'Free Wi-Fi',
+              'Open-Sky Shower'
+            ],
             pricePerNight: 24000,
             price: 24000,
-            photos: ['https://images.unsplash.com/photo-1584132967334-10e028bd69f7?auto=format&fit=crop&w=800&q=80'],
+            photos: [
+              'https://images.unsplash.com/photo-1584132967334-10e028bd69f7?auto=format&fit=crop&w=800&q=80'
+            ],
             availability: true
           },
           {
@@ -393,14 +557,27 @@ const seedServicesAndReviews = async () => {
             capacity: 4,
             count: 5,
             bedConfiguration: '1 King Bed + 2 Single Beds',
-            roomFacilities: ['Air Conditioning', 'Rock View Terrace', 'Free Wi-Fi', 'Bicycle Rental'],
+            roomFacilities: [
+              'Air Conditioning',
+              'Rock View Terrace',
+              'Free Wi-Fi',
+              'Bicycle Rental'
+            ],
             pricePerNight: 36000,
             price: 36000,
-            photos: ['https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?auto=format&fit=crop&w=800&q=80'],
+            photos: [
+              'https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?auto=format&fit=crop&w=800&q=80'
+            ],
             availability: true
           }
         ],
-        facilities: ['Birdwatching Trails', 'Outdoor Pool', 'Village Curry Dining', 'Free Wi-Fi', 'Free Parking'],
+        facilities: [
+          'Birdwatching Trails',
+          'Outdoor Pool',
+          'Village Curry Dining',
+          'Free Wi-Fi',
+          'Free Parking'
+        ],
         checkInTime: '13:00',
         checkOutTime: '11:00',
         pricePerNight: 24000,
@@ -410,32 +587,69 @@ const seedServicesAndReviews = async () => {
     ];
 
     const hotels = [];
+
     for (const def of hotelSeedDefinitions) {
       let existing = await Hotel.findOne({ name: def.name });
+
       if (!existing) {
         existing = await Hotel.create(def);
       } else {
+        existing.ownerId = existing.ownerId || def.ownerId;
         existing.ownerName = existing.ownerName || def.ownerName;
         existing.district = existing.district || def.district;
+        existing.location = existing.location || def.location;
         existing.address = existing.address || def.address;
+
         existing.latitude = existing.latitude ?? def.latitude;
         existing.longitude = existing.longitude ?? def.longitude;
-        existing.contactEmail = existing.contactEmail || def.contactEmail;
-        existing.contactNumber = existing.contactNumber || def.contactNumber;
-        existing.photos = existing.photos?.length ? existing.photos : def.photos;
-        existing.checkInTime = existing.checkInTime || def.checkInTime;
-        existing.checkOutTime = existing.checkOutTime || def.checkOutTime;
-        existing.facilities = existing.facilities?.length ? existing.facilities : def.facilities;
-        existing.rooms = def.rooms;
-        existing.pricePerNight = def.pricePerNight;
+
+        existing.contactEmail =
+          existing.contactEmail || def.contactEmail;
+        existing.contactNumber =
+          existing.contactNumber || def.contactNumber;
+
+        existing.description =
+          existing.description || def.description;
+
+        existing.photos = existing.photos?.length
+          ? existing.photos
+          : def.photos;
+
+        existing.checkInTime =
+          existing.checkInTime || def.checkInTime;
+        existing.checkOutTime =
+          existing.checkOutTime || def.checkOutTime;
+
+        existing.facilities = existing.facilities?.length
+          ? existing.facilities
+          : def.facilities;
+
+        // Preserve existing room information when available
+        existing.rooms = existing.rooms?.length
+          ? existing.rooms
+          : def.rooms;
+
+        // Keep existing valid LKR price
+        if (!existing.pricePerNight || existing.pricePerNight < 1000) {
+          existing.pricePerNight = def.pricePerNight;
+        }
+
         existing.currency = 'LKR';
+
         await existing.save();
       }
+
       hotels.push(existing);
     }
 
-    // 4. Seed Sample Completed Bookings & Reviews if no reviews exist yet
+    console.log(`Hotels ready: ${hotels.length}`);
+
+    // --------------------------------------------------
+    // 4. Seed Sample Completed Bookings and Reviews
+    // --------------------------------------------------
+
     const existingReviewsCount = await Review.countDocuments();
+
     if (existingReviewsCount === 0 && guides.length >= 2 && hotels.length >= 2) {
       const booking1 = await Booking.create({
         touristId: tourist1._id,
@@ -565,10 +779,18 @@ const seedServicesAndReviews = async () => {
           ]
         }
       ]);
+
+      console.log('Seeded sample completed bookings and reviews.');
     }
 
-    // 5. Ensure sample Pending & Confirmed Guide and Hotel bookings exist for dashboard testing
-    const pendingGuideBookingCount = await Booking.countDocuments({ bookingType: 'guide' });
+    // --------------------------------------------------
+    // 5. Seed Pending and Confirmed Guide Bookings
+    // --------------------------------------------------
+
+    const pendingGuideBookingCount = await Booking.countDocuments({
+      bookingType: 'guide'
+    });
+
     if (pendingGuideBookingCount === 0 && guides.length >= 1) {
       await Booking.insertMany([
         {
@@ -602,58 +824,82 @@ const seedServicesAndReviews = async () => {
       ]);
     }
 
-    const pendingHotelBookingCount = await Booking.countDocuments({ bookingType: 'hotel' });
+    // --------------------------------------------------
+    // 6. Seed Pending and Confirmed Hotel Bookings
+    // --------------------------------------------------
+
+    const pendingHotelBookingCount = await Booking.countDocuments({
+      bookingType: 'hotel'
+    });
+
     if (pendingHotelBookingCount === 0 && hotels.length >= 1) {
       const kandyHotel = hotels[0];
       const firstRoom = kandyHotel.rooms[0];
-      await Booking.insertMany([
-        {
-          touristId: tourist1._id,
-          bookingType: 'hotel',
-          hotelId: kandyHotel._id,
-          roomId: String(firstRoom._id),
-          roomType: firstRoom.type,
-          roomQuantity: 1,
-          checkInDate: new Date('2026-12-10'),
-          checkOutDate: new Date('2026-12-13'),
-          nights: 3,
-          guestsCount: 2,
-          roomRatePerNightLKR: firstRoom.pricePerNight,
-          specialRequests: 'High floor river view room if available, late arrival around 6:00 PM.',
-          totalAmount: firstRoom.pricePerNight * 3,
-          currency: 'LKR',
-          status: 'Pending'
-        },
-        {
-          touristId: tourist2._id,
-          bookingType: 'hotel',
-          hotelId: kandyHotel._id,
-          roomId: String(firstRoom._id),
-          roomType: firstRoom.type,
-          roomQuantity: 2,
-          checkInDate: new Date('2026-12-20'),
-          checkOutDate: new Date('2026-12-22'),
-          nights: 2,
-          guestsCount: 4,
-          roomRatePerNightLKR: firstRoom.pricePerNight,
-          specialRequests: 'Adjacent rooms requested for family.',
-          totalAmount: firstRoom.pricePerNight * 2 * 2,
-          currency: 'LKR',
-          status: 'Confirmed'
-        }
-      ]);
+
+      if (firstRoom) {
+        await Booking.insertMany([
+          {
+            touristId: tourist1._id,
+            bookingType: 'hotel',
+            hotelId: kandyHotel._id,
+            roomId: String(firstRoom._id),
+            roomType: firstRoom.type,
+            roomQuantity: 1,
+            checkInDate: new Date('2026-12-10'),
+            checkOutDate: new Date('2026-12-13'),
+            nights: 3,
+            guestsCount: 2,
+            roomRatePerNightLKR: firstRoom.pricePerNight,
+            specialRequests: 'High floor river view room if available, late arrival around 6:00 PM.',
+            totalAmount: firstRoom.pricePerNight * 3,
+            currency: 'LKR',
+            status: 'Pending'
+          },
+          {
+            touristId: tourist2._id,
+            bookingType: 'hotel',
+            hotelId: kandyHotel._id,
+            roomId: String(firstRoom._id),
+            roomType: firstRoom.type,
+            roomQuantity: 2,
+            checkInDate: new Date('2026-12-20'),
+            checkOutDate: new Date('2026-12-22'),
+            nights: 2,
+            guestsCount: 4,
+            roomRatePerNightLKR: firstRoom.pricePerNight,
+            specialRequests: 'Adjacent rooms requested for family.',
+            totalAmount: firstRoom.pricePerNight * 2 * 2,
+            currency: 'LKR',
+            status: 'Confirmed'
+          }
+        ]);
+      }
     }
 
-transpotation
-    // 5. Seed Sample Destination Reviews if none exist yet (Module 7 & Module 5 Integration)
-    const destReviewCount = await Review.countDocuments({ targetType: 'destination' });
+    // --------------------------------------------------
+    // 7. Seed Sample Destination Reviews
+    // --------------------------------------------------
+
+    const destReviewCount = await Review.countDocuments({
+      targetType: 'destination'
+    });
+
     if (destReviewCount === 0) {
-      const sigiriya = await Destination.findOne({ name: 'Sigiriya Rock Fortress' }) || await Destination.findOne({ name: 'Sigiriya' });
-      const mirissa = await Destination.findOne({ name: 'Mirissa Beach' }) || await Destination.findOne({ name: 'Mirissa' });
+      const sigiriya =
+        await Destination.findOne({ name: 'Sigiriya Rock Fortress' }) ||
+        await Destination.findOne({ name: 'Sigiriya' });
+
+      const mirissa =
+        await Destination.findOne({ name: 'Mirissa Beach' }) ||
+        await Destination.findOne({ name: 'Mirissa' });
+
       const ella = await Destination.findOne({ name: 'Ella' });
       const galle = await Destination.findOne({ name: 'Galle Fort' });
       const yala = await Destination.findOne({ name: 'Yala National Park' });
-      const kandy = await Destination.findOne({ name: 'Temple of the Tooth (Kandy)' }) || await Destination.findOne({ name: 'Kandy' });
+
+      const kandy =
+        await Destination.findOne({ name: 'Temple of the Tooth (Kandy)' }) ||
+        await Destination.findOne({ name: 'Kandy' });
 
       const destReviewsToInsert = [];
 
@@ -759,17 +1005,15 @@ transpotation
       }
 
       if (yala) {
-        destReviewsToInsert.push(
-          {
-            authorId: tourist3._id,
-            targetType: 'destination',
-            targetId: yala._id,
-            score: 5,
-            comment: 'Spotted leopards, elephants, sloth bears, and crocodiles on a single morning jeep safari!',
-            verifiedBooking: true,
-            status: 'active'
-          }
-        );
+        destReviewsToInsert.push({
+          authorId: tourist3._id,
+          targetType: 'destination',
+          targetId: yala._id,
+          score: 5,
+          comment: 'Spotted leopards, elephants, sloth bears, and crocodiles on a single morning jeep safari!',
+          verifiedBooking: true,
+          status: 'active'
+        });
       }
 
       if (kandy) {
@@ -797,28 +1041,53 @@ transpotation
 
       if (destReviewsToInsert.length > 0) {
         await Review.insertMany(destReviewsToInsert);
-        const reviewedTargets = [sigiriya, ella, mirissa, galle, yala, kandy].filter(Boolean);
-        for (const d of reviewedTargets) {
-          await recalculateTargetRating('destination', d._id);
+
+        const reviewedTargets = [
+          sigiriya,
+          ella,
+          mirissa,
+          galle,
+          yala,
+          kandy
+        ].filter(Boolean);
+
+        for (const destination of reviewedTargets) {
+          await recalculateTargetRating(
+            'destination',
+            destination._id
+          );
         }
-        console.log(`Seeded ${destReviewsToInsert.length} destination reviews and synchronized destination ratings.`);
+
+        console.log(
+          `Seeded ${destReviewsToInsert.length} destination reviews and synchronized destination ratings.`
+        );
       }
     }
 
+    // --------------------------------------------------
+    // 8. Synchronize Guide and Hotel Ratings
+    // --------------------------------------------------
+
+    for (const guide of guides) {
+      await recalculateTargetRating('guide', guide._id);
+    }
+
+    for (const hotel of hotels) {
+      await recalculateTargetRating('hotel', hotel._id);
+    }
+
     console.log('Module 5 Services & Reviews Seeding Complete!');
-    // Synchronize ratings on all guides and hotels
-    for (const g of guides) {
-      await recalculateTargetRating('guide', g._id);
-    }
-    for (const h of hotels) {
-      await recalculateTargetRating('hotel', h._id);
-    }
 
-
-    main
+    await mongoose.connection.close();
     process.exit(0);
+
   } catch (err) {
-    console.error('Seed Error:', err.message);
+    console.error('Seed Error:', err);
+
+    if (mongoose.connection.readyState !== 0) {
+      await mongoose.connection.close();
+    }
+
     process.exit(1);
   }
 };

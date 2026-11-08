@@ -20,6 +20,7 @@ import {
 import api from '../services/api';
 import StarRating from '../components/StarRating';
 import ReviewList from '../components/ReviewList';
+import { useCurrency } from '../context/CurrencyContext';
 
 const FALLBACK_AVATAR =
   'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80';
@@ -30,6 +31,7 @@ const formatGuidePrice = (rate) => {
 };
 
 const Guides = () => {
+  const { formatPrice } = useCurrency();
   const [guides, setGuides] = useState([]);
   const [popularGuides, setPopularGuides] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -244,7 +246,9 @@ const Guides = () => {
                       #{idx + 1} Top Rated
                     </span>
                     <span className="text-xs text-blue-200 font-semibold">
-                      {formatGuidePrice(g.dailyRate)}/day
+<span className="text-xs text-blue-200 font-semibold">
+  {formatPrice(g.dailyRateLKR || g.dailyRate)}/day
+</span>
                     </span>
                   </div>
                   <h3 className="font-bold text-base mt-2">{getGuideDisplayName(g)}</h3>
@@ -460,9 +464,12 @@ const Guides = () => {
                       </div>
                     </div>
 
-                    <div className="text-right flex-shrink-0">
-                      <span className="text-xl font-extrabold text-blue-900">
-                        {formatGuidePrice(guide.dailyRate)}
+<div className="text-right flex-shrink-0">
+  <span className="text-xl font-extrabold text-blue-900">
+    {formatPrice(guide.dailyRateLKR || guide.dailyRate)}
+  </span>
+  <span className="block text-xs text-gray-500">per day</span>
+</div>
                       </span>
                       <span className="block text-xs text-gray-500">per day</span>
                     </div>

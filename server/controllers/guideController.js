@@ -1,5 +1,8 @@
 const jwt = require('jsonwebtoken');
 const Guide = require('../models/Guide');
+const jwt = require('jsonwebtoken');
+const Guide = require('../models/Guide');
+const { normalizeToLKR, getExchangeRates, SUPPORTED_CURRENCIES } = require('../services/currencyService');
 const User = require('../models/User');
 const Booking = require('../models/Booking');
 const Review = require('../models/Review');
@@ -189,6 +192,12 @@ exports.registerGuide = async (req, res) => {
 // @access  Public
 exports.getGuides = async (req, res) => {
   try {
+
+// @desc    Get all registered guides with discovery filters and currency conversion
+// @route   GET /api/guides
+// @access  Public
+exports.getGuides = async (req, res) => {
+  try {
     const {
       district,
       serviceArea,
@@ -202,25 +211,47 @@ exports.getGuides = async (req, res) => {
       sortBy
     } = req.query;
 
+    const targetCurrency = (req.query.currency || 'LKR').toUpperCase();
+    const validCurrency = SUPPORTED_CURRENCIES[targetCurrency]
+      ? targetCurrency
+      : 'LKR';
+
     const query = {};
 
     const areaFilter = district || serviceArea;
+
     if (areaFilter && String(areaFilter).trim()) {
-      query.serviceAreas = { $elemMatch: { $regex: new RegExp(String(areaFilter).trim(), 'i') } };
+      query.serviceAreas = {
+        $elemMatch: {
+          $regex: new RegExp(String(areaFilter).trim(), 'i')
+        }
+      };
     }
 
     if (language && String(language).trim()) {
-      query.languages = { $elemMatch: { $regex: new RegExp(String(language).trim(), 'i') } };
+      query.languages = {
+        $elemMatch: {
+          $regex: new RegExp(String(language).trim(), 'i')
+        }
+      };
     }
 
     if (minPrice !== undefined || maxPrice !== undefined) {
       query.dailyRate = {};
-      if (minPrice !== undefined && minPrice !== '') query.dailyRate.$gte = Number(minPrice);
-      if (maxPrice !== undefined && maxPrice !== '') query.dailyRate.$lte = Number(maxPrice);
+
+      if (minPrice !== undefined && minPrice !== '') {
+        query.dailyRate.$gte = Number(minPrice);
+      }
+
+      if (maxPrice !== undefined && maxPrice !== '') {
+        query.dailyRate.$lte = Number(maxPrice);
+      }
     }
 
     if (minExperience !== undefined && minExperience !== '') {
-      query.experienceYears = { $gte: Number(minExperience) };
+      query.experienceYears = {
+        $gte: Number(minExperience)
+      };
     }
 
     if (availability === 'true') {
@@ -230,21 +261,46 @@ exports.getGuides = async (req, res) => {
     }
 
     if (minRating !== undefined && minRating !== '') {
-      query.rating = { $gte: Number(minRating) };
+      query.rating = {
+        $gte: Number(minRating)
+      };
     }
 
-    let guides = await Guide.find(query).populate('userId', 'name email profileImage');
+    let [guides, rateData] = await Promise.all([
+      Guide.find(query).populate(
+        'userId',
+        'name email profileImage'
+      ),
+      getExchangeRates()
+    ]);
 
-    // Text search across name, bio, serviceAreas, languages, expertise
+    // Text search across name, bio, service areas, languages and expertise
     if (search && String(search).trim()) {
       const q = String(search).toLowerCase().trim();
+
       guides = guides.filter((g) => {
         const displayName = (g.name || g.userId?.name || '').toLowerCase();
         const bioMatch = (g.bio || '').toLowerCase().includes(q);
-        const areaMatch = (g.serviceAreas || []).some((a) => a.toLowerCase().includes(q));
-        const langMatch = (g.languages || []).some((l) => l.toLowerCase().includes(q));
-        const expMatch = (g.expertise || []).some((e) => e.toLowerCase().includes(q));
-        return displayName.includes(q) || bioMatch || areaMatch || langMatch || expMatch;
+
+        const areaMatch = (g.serviceAreas || []).some((a) =>
+          a.toLowerCase().includes(q)
+        );
+
+        const langMatch = (g.languages || []).some((l) =>
+          l.toLowerCase().includes(q)
+        );
+
+        const expMatch = (g.expertise || []).some((e) =>
+          e.toLowerCase().includes(q)
+        );
+
+        return (
+          displayName.includes(q) ||
+          bioMatch ||
+          areaMatch ||
+          langMatch ||
+          expMatch
+        );
       });
     }
 
@@ -254,50 +310,59 @@ exports.getGuides = async (req, res) => {
     } else if (sortBy === 'price_high') {
       guides.sort((a, b) => (b.dailyRate || 0) - (a.dailyRate || 0));
     } else if (sortBy === 'experience') {
-      guides.sort((a, b) => (b.experienceYears || 0) - (a.experienceYears || 0));
+      guides.sort(
+        (a, b) => (b.experienceYears || 0) - (a.experienceYears || 0)
+      );
     } else if (sortBy === 'rating') {
       guides.sort((a, b) => (b.rating || 0) - (a.rating || 0));
     }
 
+    // Currency conversion and response
+    const rate = validCurrency === 'LKR'
+      ? 1
+      : rateData.rates[validCurrency] || 1;
+
+    const decimals = SUPPORTED_CURRENCIES[validCurrency]?.decimals ?? 2;
+
+    const enriched = guides.map((g) => {
+      const obj = g.toObject ? g.toObject() : { ...g };
+
+      const dailyRateLKR = normalizeToLKR(
+        obj.dailyRate,
+        obj.currency || 'LKR',
+        1000
+      );
+
+      return {
+        ...obj,
+        currency: 'LKR',
+        dailyRateLKR,
+        dailyRate: dailyRateLKR,
+        dailyRateConverted: Number(
+          (dailyRateLKR * rate).toFixed(decimals)
+        ),
+        displayCurrency: validCurrency,
+        displayCurrencySymbol:
+          SUPPORTED_CURRENCIES[validCurrency]?.symbol || 'Rs.'
+      };
+    });
+
     res.status(200).json({
       success: true,
-      count: guides.length,
+      count: enriched.length,
       baseCurrency: 'LKR',
-      data: guides
+      displayCurrency: validCurrency,
+      data: enriched
     });
+
   } catch (err) {
-    res.status(400).json({ success: false, error: err.message });
+    res.status(400).json({
+      success: false,
+      error: err.message
+    });
   }
 };
 
-// @desc    Get single guide details by ID
-// @route   GET /api/guides/:id
-// @access  Public
-exports.getGuideById = async (req, res) => {
-  try {
-    const guide = await Guide.findById(req.params.id).populate('userId', 'name email profileImage');
-    if (!guide) {
-      return res.status(404).json({ success: false, error: 'Tour guide not found' });
-    }
-
-    // Fetch upcoming confirmed booking ranges to show real availability
-    const confirmedBookings = await Booking.find({
-      guideId: guide._id,
-      status: 'Confirmed',
-      endDate: { $gte: new Date() }
-    })
-      .select('startDate endDate serviceDays status')
-      .lean();
-
-    const completion = computeGuideProfileCompletion(guide);
-
-    res.status(200).json({
-      success: true,
-      data: {
-        ...guide.toObject(),
-        profileCompletion: completion,
-        confirmedBookingRanges: confirmedBookings
-      }
     });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
@@ -582,7 +647,43 @@ exports.checkGuideAvailability = async (req, res) => {
 exports.createGuide = async (req, res) => {
   try {
     req.body.userId = req.user.id;
-    if (!req.body.name) req.body.name = req.user.name;
+// @desc    Create guide (legacy endpoint with ownership assignment)
+// @route   POST /api/guides
+// @access  Private (guide, admin)
+exports.createGuide = async (req, res) => {
+  try {
+    req.body.userId = req.user.id;
+
+    // Set guide name from authenticated user if not provided
+    if (!req.body.name) {
+      req.body.name = req.user.name;
+    }
+
+    // Normalize daily rate to LKR
+    if (req.body.dailyRate) {
+      req.body.dailyRate = normalizeToLKR(
+        req.body.dailyRate,
+        req.body.currency || 'LKR',
+        1000
+      );
+
+      req.body.currency = 'LKR';
+    }
+
+    const guide = await Guide.create(req.body);
+
+    res.status(201).json({
+      success: true,
+      data: guide
+    });
+
+  } catch (err) {
+    res.status(400).json({
+      success: false,
+      error: err.message
+    });
+  }
+};
     const guide = await Guide.create(req.body);
     res.status(201).json({ success: true, data: guide });
   } catch (err) {
