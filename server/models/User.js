@@ -33,7 +33,7 @@ UserSchema.methods.getSignedJwtToken = function() {
     email: this.email,
     role: this.role,
     profileImage: this.profileImage
-  }, process.env.JWT_SECRET || 'secret', {
+  }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRE || '30d'
   });
 };

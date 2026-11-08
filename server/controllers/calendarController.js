@@ -65,7 +65,7 @@ exports.getCalendarMonth = async (req, res) => {
     if (!userId && req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
       try {
         const token = req.headers.authorization.split(' ')[1];
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
         const userDoc = await User.findById(decoded.id);
         if (userDoc) userId = userDoc._id;
       } catch (e) {

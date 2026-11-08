@@ -8,6 +8,22 @@ const connectDB = require('./config/db');
 // Load environment variables
 dotenv.config();
 
+// Fail fast: the JWT secret is a single source of truth (no 'secret' fallback
+// anywhere else in the codebase). Refusing to boot beats silently signing
+// tokens with a publicly known key.
+const validateEnv = () => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret || secret.trim().length < 32) {
+    console.error(
+      'FATAL: JWT_SECRET is missing or too short. Set JWT_SECRET in server/.env ' +
+        'to a random string of at least 32 characters (e.g. `openssl rand -hex 32`). ' +
+        'Refusing to start.'
+    );
+    process.exit(1);
+  }
+};
+validateEnv();
+
 // Connect to database
 connectDB();
 

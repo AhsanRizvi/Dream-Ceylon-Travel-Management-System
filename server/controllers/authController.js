@@ -5,12 +5,16 @@ const User = require('../models/User');
 // @access  Public
 exports.register = async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    // SECURITY: `role` is deliberately NOT destructured from req.body. This
+    // route is public, so honouring a caller-supplied role previously let
+    // anyone register themselves as `admin`. Role is left to the schema
+    // default ('tourist'); role changes only happen server-side.
+    const { name, email, password } = req.body;
     const user = await User.create({
       name,
       email,
       passwordHash: password, // will be hashed by pre-save hook
-      role
+      role: 'tourist'
     });
     
     const token = user.getSignedJwtToken();
