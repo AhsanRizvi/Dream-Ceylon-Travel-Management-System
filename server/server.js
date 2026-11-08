@@ -44,6 +44,7 @@ app.use('/api/packages', packageRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/maps', mapRoutes);
+app.use('/api/routes', mapRoutes);
 app.use('/api/uploads', uploadRoutes);
 
 const PORT = process.env.PORT || 5000;

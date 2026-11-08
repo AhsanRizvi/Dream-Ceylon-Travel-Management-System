@@ -1,7 +1,19 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { Star, MapPin, Navigation, Compass, AlertCircle, RefreshCw, ZoomIn, ZoomOut } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import {
+  Star,
+  MapPin,
+  Navigation,
+  AlertCircle,
+  RefreshCw,
+  ZoomIn,
+  ZoomOut,
+  Layers,
+  Eye,
+  ExternalLink
+} from 'lucide-react';
 
 /**
  * Module 2: Maps, Routes and Transportation
@@ -9,21 +21,42 @@ import { Star, MapPin, Navigation, Compass, AlertCircle, RefreshCw, ZoomIn, Zoom
  * University: South Eastern University of Sri Lanka
  * 
  * Interactive Map Component for Sri Lanka Tourism Route Visualization.
- * Uses Leaflet & OpenStreetMap to display:
- * - Start Location Pin (distinct green badge)
- * - Numbered Destination Markers (1..N) with rich popups (name, district, category, rating)
- * - Primary Route Polyline (Royal Blue)
- * - Alternative Route Polylines (Muted Dashed Slate) with click-to-select
- * - Auto-fit Bounds (dynamically framing all stops and route lines)
- * - Zoom & Reset view controls
- * - Responsive layout with loading overlay & error states
+ * Supports:
+ * - Multi-Layer Map Switching (Standard Street Map, Topographic Terrain, Satellite Imagery)
+ * - Google Maps Platform / OpenStreetMap coordinate compatibility
+ * - Start Location Pin (distinct emerald badge)
+ * - Numbered Destination Markers (1..N) with rich interactive popups & detail links
+ * - Primary Route Polyline (Royal Blue) & Clickable Alternative Route Polylines (Dashed Slate)
+ * - Graceful handling of unavailable/invalid coordinates
+ * - Auto-fit Bounds, Zoom & Reset controls, Loading & Error states
  */
 
 const SRI_LANKA_CENTER = [7.8731, 80.7718]; // Geographical Center of Sri Lanka
 const DEFAULT_ZOOM = 7;
 
+const MAP_TILE_LAYERS = {
+  standard: {
+    key: 'standard',
+    label: 'Road Map',
+    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors'
+  },
+  terrain: {
+    key: 'terrain',
+    label: 'Terrain',
+    url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+    attribution: 'Map data: &copy; OpenStreetMap contributors, SRTM | Map style: &copy; OpenTopoMap'
+  },
+  satellite: {
+    key: 'satellite',
+    label: 'Satellite',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye'
+  }
+};
+
 // Custom Marker Icons for Clear Tour Sequencing
-const createStartIcon = (label = 'Start') => {
+const createStartIcon = (label = 'START') => {
   return L.divIcon({
     className: 'custom-start-marker',
     html: `
@@ -114,6 +147,20 @@ const createDestinationIcon = (number = 1, isFinal = false) => {
   });
 };
 
+// Validate whether a coordinate pair lies within valid numerical geographic bounds
+const isValidCoordinate = (lat, lng) => {
+  const parsedLat = parseFloat(lat);
+  const parsedLng = parseFloat(lng);
+  return (
+    !Number.isNaN(parsedLat) &&
+    !Number.isNaN(parsedLng) &&
+    parsedLat >= -90 &&
+    parsedLat <= 90 &&
+    parsedLng >= -180 &&
+    parsedLng <= 180
+  );
+};
+
 // Sub-component to auto-fit bounds smoothly whenever destinations or routes update
 const MapBoundsHandler = ({ boundsPoints }) => {
   const map = useMap();
@@ -182,38 +229,54 @@ const MapView = ({
   alternativeRoutes = [],
   selectedRouteIndex = 0,
   onSelectRoute = null,
+  onSelectDestination = null,
   loading = false,
   error = null,
   height = '520px'
 }) => {
   const mapRef = useRef(null);
+  const [activeLayer, setActiveLayer] = useState('standard');
+
+  // Separate valid destinations from any with missing/unavailable coordinates
+  const { validDestinations, unavailableDestinations } = useMemo(() => {
+    const valid = [];
+    const unavailable = [];
+    if (Array.isArray(destinations)) {
+      destinations.forEach((d) => {
+        if (d && isValidCoordinate(d.latitude, d.longitude)) {
+          valid.push(d);
+        } else if (d) {
+          unavailable.push(d);
+        }
+      });
+    }
+    return { validDestinations: valid, unavailableDestinations: unavailable };
+  }, [destinations]);
 
   // Compute all points to frame in the viewport
   const boundsPoints = useMemo(() => {
     const points = [];
 
-    if (startLocation && startLocation.latitude && startLocation.longitude) {
+    if (startLocation && isValidCoordinate(startLocation.latitude, startLocation.longitude)) {
       points.push([parseFloat(startLocation.latitude), parseFloat(startLocation.longitude)]);
     }
 
-    if (destinations && Array.isArray(destinations)) {
-      destinations.forEach(d => {
-        if (d && d.latitude && d.longitude) {
-          points.push([parseFloat(d.latitude), parseFloat(d.longitude)]);
-        }
-      });
-    }
+    validDestinations.forEach((d) => {
+      points.push([parseFloat(d.latitude), parseFloat(d.longitude)]);
+    });
 
     if (routeCoordinates && routeCoordinates.length > 0) {
-      // Sample polyline coordinates to prevent over-computation
       const step = Math.max(1, Math.floor(routeCoordinates.length / 40));
       for (let i = 0; i < routeCoordinates.length; i += step) {
-        points.push(routeCoordinates[i]);
+        const pt = routeCoordinates[i];
+        if (Array.isArray(pt) && isValidCoordinate(pt[0], pt[1])) {
+          points.push(pt);
+        }
       }
     }
 
     return points;
-  }, [startLocation, destinations, routeCoordinates]);
+  }, [startLocation, validDestinations, routeCoordinates]);
 
   // Initial center determination
   const initialCenter = boundsPoints.length === 1 
@@ -227,11 +290,15 @@ const MapView = ({
       if (boundsPoints.length > 1) {
         const bounds = L.latLngBounds(boundsPoints);
         mapRef.current.fitBounds(bounds, { padding: [50, 50], animate: true });
+      } else if (boundsPoints.length === 1) {
+        mapRef.current.setView(boundsPoints[0], 12, { animate: true });
       } else {
         mapRef.current.setView(SRI_LANKA_CENTER, DEFAULT_ZOOM, { animate: true });
       }
     }
   };
+
+  const currentTile = MAP_TILE_LAYERS[activeLayer] || MAP_TILE_LAYERS.standard;
 
   return (
     <div 
@@ -242,19 +309,50 @@ const MapView = ({
       {loading && (
         <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-[1001] flex flex-col items-center justify-center gap-3">
           <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-          <span className="text-sm font-bold text-gray-800">Calculating Road Navigation...</span>
-          <span className="text-xs text-gray-500">Querying OpenStreetMap road networks</span>
+          <span className="text-sm font-bold text-gray-800">Calculating Sri Lanka Road Navigation...</span>
+          <span className="text-xs text-gray-500">Computing route geometry, distance & travel duration</span>
         </div>
       )}
 
+      {/* Map Layer Switcher (Top Left) */}
+      <div className="absolute top-4 left-4 z-[1000] bg-white/95 backdrop-blur-md p-1 rounded-xl shadow-md border border-gray-200 flex items-center gap-1">
+        <span className="text-[11px] font-bold text-gray-500 px-2 hidden sm:inline-flex items-center gap-1">
+          <Layers size={12} className="text-blue-600" /> Map:
+        </span>
+        {Object.values(MAP_TILE_LAYERS).map((layer) => (
+          <button
+            key={layer.key}
+            type="button"
+            onClick={() => setActiveLayer(layer.key)}
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition ${
+              activeLayer === layer.key
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            {layer.label}
+          </button>
+        ))}
+      </div>
+
       {/* Error Message Notice */}
       {error && !loading && (
-        <div className="absolute top-4 left-4 right-4 sm:right-auto max-w-md z-[1001] bg-amber-50 border border-amber-300 text-amber-900 px-4 py-3 rounded-xl shadow-lg flex items-start gap-2.5 text-xs">
+        <div className="absolute top-16 left-4 right-4 sm:right-auto max-w-md z-[1001] bg-amber-50 border border-amber-300 text-amber-900 px-4 py-3 rounded-xl shadow-lg flex items-start gap-2.5 text-xs">
           <AlertCircle size={18} className="text-amber-600 mt-0.5 flex-shrink-0" />
           <div>
             <span className="font-bold block">Routing Notice</span>
             <span>{error}</span>
           </div>
+        </div>
+      )}
+
+      {/* Unavailable Coordinates Graceful Warning */}
+      {unavailableDestinations.length > 0 && !loading && (
+        <div className="absolute bottom-14 left-3 z-[1000] bg-amber-50/95 border border-amber-300 text-amber-900 px-3 py-1.5 rounded-lg shadow text-[11px] flex items-center gap-1.5">
+          <AlertCircle size={13} className="text-amber-600 flex-shrink-0" />
+          <span>
+            {unavailableDestinations.length} location(s) omitted due to unavailable GPS coordinates ({unavailableDestinations.map(d => d.name || 'Unnamed').join(', ')}).
+          </span>
         </div>
       )}
 
@@ -266,10 +364,10 @@ const MapView = ({
         scrollWheelZoom={true}
         style={{ height: '100%', width: '100%', zIndex: 1 }}
       >
-        {/* OpenStreetMap Standard Tile Layer */}
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors'
-          url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+          key={currentTile.key}
+          attribution={currentTile.attribution}
+          url={currentTile.url}
         />
 
         {/* Viewport Bounds Auto-fit */}
@@ -279,7 +377,7 @@ const MapView = ({
         <MapControls onRecenter={handleRecenter} />
 
         {/* START LOCATION MARKER */}
-        {startLocation && startLocation.latitude && startLocation.longitude && (
+        {startLocation && isValidCoordinate(startLocation.latitude, startLocation.longitude) && (
           <Marker 
             position={[parseFloat(startLocation.latitude), parseFloat(startLocation.longitude)]}
             icon={createStartIcon('START')}
@@ -302,28 +400,39 @@ const MapView = ({
         )}
 
         {/* DESTINATION MARKERS */}
-        {destinations && destinations.map((dest, idx) => {
-          if (!dest || !dest.latitude || !dest.longitude) return null;
-          const isFinal = idx === destinations.length - 1;
-          const dayNumber = dest.day || idx + 1;
+        {validDestinations.map((dest, idx) => {
+          const isFinal = idx === validDestinations.length - 1;
+          const stopNumber = dest.day || idx + 1;
 
           return (
             <Marker 
               key={dest._id || `dest-${idx}`} 
               position={[parseFloat(dest.latitude), parseFloat(dest.longitude)]}
-              icon={createDestinationIcon(dayNumber, isFinal)}
+              icon={createDestinationIcon(stopNumber, isFinal)}
+              eventHandlers={{
+                click: () => {
+                  if (onSelectDestination) onSelectDestination(dest);
+                }
+              }}
             >
               <Popup className="custom-leaflet-popup">
-                <div className="p-1 max-w-xs">
+                <div className="p-1 max-w-[230px]">
                   <div className="flex items-center justify-between gap-2 mb-1">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
-                      Day {dayNumber} Stop
+                      Stop #{stopNumber}
                     </span>
-                    {dest.rating && (
-                      <span className="flex items-center text-amber-500 text-xs font-bold">
-                        <Star size={11} className="fill-current mr-0.5" /> {dest.rating}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-1.5">
+                      {dest.rating && (
+                        <span className="flex items-center text-amber-500 text-xs font-bold">
+                          <Star size={11} className="fill-current mr-0.5" /> {Number(dest.rating).toFixed(1)}
+                        </span>
+                      )}
+                      {dest.viewCount !== undefined && (
+                        <span className="flex items-center text-gray-400 text-[10px] font-semibold">
+                          <Eye size={10} className="mr-0.5" /> {dest.viewCount}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <h3 className="font-extrabold text-gray-900 text-sm">{dest.name}</h3>
                   <p className="text-xs text-gray-500 mt-0.5">
@@ -335,8 +444,18 @@ const MapView = ({
                       {dest.description}
                     </p>
                   )}
-                  <div className="text-[10px] text-gray-400 mt-2 pt-1 border-t border-gray-100 font-mono">
-                    {parseFloat(dest.latitude).toFixed(4)}, {parseFloat(dest.longitude).toFixed(4)}
+                  <div className="mt-2 pt-1.5 border-t border-gray-100 flex items-center justify-between gap-2">
+                    <span className="text-[10px] text-gray-400 font-mono">
+                      {parseFloat(dest.latitude).toFixed(3)}, {parseFloat(dest.longitude).toFixed(3)}
+                    </span>
+                    {dest._id && (
+                      <Link
+                        to={`/destinations/${dest._id}`}
+                        className="text-[11px] font-bold text-blue-600 hover:underline inline-flex items-center gap-0.5"
+                      >
+                        Details <ExternalLink size={10} />
+                      </Link>
+                    )}
                   </div>
                 </div>
               </Popup>
@@ -353,9 +472,9 @@ const MapView = ({
               key={`alt-route-${aIdx}`}
               positions={alt.leafletCoordinates}
               pathOptions={{
-                color: '#94a3b8',
+                color: '#64748b',
                 weight: 4,
-                opacity: 0.7,
+                opacity: 0.75,
                 dashArray: '8, 8',
                 lineJoin: 'round'
               }}
@@ -391,7 +510,7 @@ const MapView = ({
             pathOptions={{
               color: '#2563eb', 
               weight: 5,
-              opacity: 0.9,
+              opacity: 0.92,
               lineJoin: 'round',
               lineCap: 'round'
             }}
@@ -401,13 +520,15 @@ const MapView = ({
 
       {/* Map Legend (Bottom Left) */}
       <div className="absolute bottom-3 left-3 z-[1000] bg-white/95 backdrop-blur-md px-3 py-2 rounded-xl shadow-md border border-gray-200 text-[11px] text-gray-700 flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-emerald-600"></span>
-          <span className="font-medium">Start</span>
-        </div>
+        {startLocation && (
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-600"></span>
+            <span className="font-medium">Origin Gateway</span>
+          </div>
+        )}
         <div className="flex items-center gap-1.5">
           <span className="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
-          <span className="font-medium">Destinations</span>
+          <span className="font-medium">Stops ({validDestinations.length})</span>
         </div>
         {routeCoordinates && routeCoordinates.length > 0 && (
           <div className="flex items-center gap-1.5">
@@ -417,8 +538,8 @@ const MapView = ({
         )}
         {alternativeRoutes && alternativeRoutes.length > 1 && (
           <div className="flex items-center gap-1.5">
-            <span className="w-4 h-1 border-t-2 border-dashed border-gray-400"></span>
-            <span className="font-medium text-gray-500">Alternatives</span>
+            <span className="w-4 h-1 border-t-2 border-dashed border-gray-500"></span>
+            <span className="font-medium text-gray-600">Alternatives ({alternativeRoutes.length - 1})</span>
           </div>
         )}
       </div>

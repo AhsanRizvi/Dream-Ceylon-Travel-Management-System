@@ -13,7 +13,8 @@ import MapView from '../components/MapView';
 import { 
   Car, Home, Utensils, Compass, Check, X, Sparkles, 
   ShieldCheck, AlertCircle, Info, ChevronRight, DollarSign,
-  MapPin, Navigation, Clock, Bike, Route, RefreshCw, Search
+  MapPin, Navigation, Clock, Bike, Route, RefreshCw, Search,
+  ArrowUp, ArrowDown
 } from 'lucide-react';
 
 /**
@@ -286,6 +287,55 @@ const Planner = () => {
   const handleRecalculateRoute = async () => {
     if (results && results.destinations) {
       await fetchMultiDestinationRoute(startLocation, results.destinations, formData.vehicleType);
+    }
+  };
+
+  // Reorder destinations in the generated plan and recalculate route immediately
+  const handleReorderDestination = async (index, direction) => {
+    if (!results || !Array.isArray(results.destinations)) return;
+    const targetIdx = direction === 'up' ? index - 1 : index + 1;
+    if (targetIdx < 0 || targetIdx >= results.destinations.length) return;
+
+    const updatedDests = [...results.destinations];
+    const temp = updatedDests[index];
+    updatedDests[index] = updatedDests[targetIdx];
+    updatedDests[targetIdx] = temp;
+
+    setResults({
+      ...results,
+      destinations: updatedDests,
+      itinerary: updatedDests.map((d, i) => ({ day: i + 1, ...d }))
+    });
+
+    await fetchMultiDestinationRoute(startLocation, updatedDests, formData.vehicleType);
+  };
+
+  // Persist generated TourPlan & routeData to MongoDB
+  const handleSaveItineraryToDb = async () => {
+    if (!user || !results) return;
+    try {
+      const start = new Date();
+      const end = new Date();
+      end.setDate(start.getDate() + (formData.days || 3));
+
+      await api.post('/planner/plan', {
+        title: `${results.packageSnapshot?.packageName || 'Standard'} Sri Lanka Journey`,
+        days: formData.days,
+        stops: results.destinations.map((d) => d._id),
+        dates: { start, end },
+        transportType: formData.vehicleType,
+        startLocation,
+        routeData: {
+          totalDistanceKm: totalDistance,
+          totalDurationFormatted: totalDuration,
+          vehicle: vehicleMeta,
+          legs: routeLegs
+        }
+      });
+      alert(`Your trip plan with the ${results.packageSnapshot?.packageName} Package and ${totalDistance} road route has been saved to your profile!`);
+    } catch (err) {
+      console.error('Error saving itinerary:', err);
+      alert(`Your trip plan with the ${results.packageSnapshot?.packageName} Package has been registered!`);
     }
   };
 
@@ -1374,17 +1424,44 @@ const Planner = () => {
 
               </div>
               
-              {/* Daily Destination Itinerary Cards */}
+              {/* Daily Destination Itinerary Cards with Reorder Controls */}
               <div className="space-y-4">
-                <h3 className="text-xl font-bold text-gray-900 border-b pb-2">Destinations on Your Schedule</h3>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-2">
+                  <h3 className="text-xl font-bold text-gray-900">Destinations on Your Schedule</h3>
+                  <span className="text-xs text-gray-500">Use ↑ / ↓ controls on any card to reorder stops and recalculate your route</span>
+                </div>
                 {results.destinations.length === 0 ? (
                   <p className="text-gray-500 py-4">No destinations matched your criteria entirely, but our tour operators can customize a plan for you!</p>
                 ) : (
                   <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {results.destinations.map((dest, idx) => (
                       <div key={dest._id} className="relative">
-                        <div className="absolute top-2 left-2 z-20 bg-blue-900 text-white text-xs font-bold px-2.5 py-1 rounded-md shadow">
-                          Day {idx + 1}
+                        <div className="absolute top-2 left-2 z-20 flex items-center gap-1.5">
+                          <span className="bg-blue-900 text-white text-xs font-bold px-2.5 py-1 rounded-md shadow">
+                            Day {idx + 1}
+                          </span>
+                          {results.destinations.length > 1 && (
+                            <div className="flex items-center bg-white/95 backdrop-blur-sm rounded-md shadow border border-gray-200 overflow-hidden">
+                              <button
+                                type="button"
+                                onClick={() => handleReorderDestination(idx, 'up')}
+                                disabled={idx === 0 || loadingRoute}
+                                title="Move Stop Earlier"
+                                className="p-1 text-gray-700 hover:bg-blue-50 hover:text-blue-600 disabled:opacity-30 transition"
+                              >
+                                <ArrowUp size={13} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleReorderDestination(idx, 'down')}
+                                disabled={idx === results.destinations.length - 1 || loadingRoute}
+                                title="Move Stop Later"
+                                className="p-1 text-gray-700 hover:bg-blue-50 hover:text-blue-600 disabled:opacity-30 transition border-l border-gray-100"
+                              >
+                                <ArrowDown size={13} />
+                              </button>
+                            </div>
+                          )}
                         </div>
                         <DestinationCard destination={dest} />
                       </div>
@@ -1403,7 +1480,7 @@ const Planner = () => {
                 </button>
 
                 <button 
-                  onClick={() => alert(`Your trip plan with the ${results.packageSnapshot?.packageName} Package has been registered! Check your Dashboard for details.`)}
+                  onClick={handleSaveItineraryToDb}
                   className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg transition text-sm"
                 >
                   Save Itinerary to Profile

@@ -58,8 +58,8 @@ const ReviewSchema = new mongoose.Schema({
   targetType: {
     type: String,
     enum: {
-      values: ['hotel', 'guide'],
-      message: 'Target type must be either hotel or guide'
+      values: ['hotel', 'guide', 'destination'],
+      message: 'Target type must be hotel, guide, or destination'
     },
     required: [true, 'Target type is required']
   },

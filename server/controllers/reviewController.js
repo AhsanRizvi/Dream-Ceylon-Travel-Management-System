@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const Review = require('../models/Review');
 const Guide = require('../models/Guide');
 const Hotel = require('../models/Hotel');
+const Destination = require('../models/Destination');
 const Booking = require('../models/Booking');
 const {
   normalizeTargetType,
@@ -17,6 +18,9 @@ const findTargetEntity = async (normalizedType, targetId) => {
   }
   if (normalizedType === 'hotel') {
     return await Hotel.findById(targetId).populate('ownerId', 'name email');
+  }
+  if (normalizedType === 'destination') {
+    return await Destination.findById(targetId);
   }
   return null;
 };
@@ -69,19 +73,22 @@ exports.createReview = async (req, res) => {
       });
     }
 
-    // 5. Ensure target Guide or Hotel exists
+    // 5. Ensure target Guide, Hotel, or Destination exists
     const targetEntity = await findTargetEntity(normalizedType, targetId);
     if (!targetEntity) {
+      const label = normalizedType === 'guide' ? 'Guide' : normalizedType === 'hotel' ? 'Hotel' : 'Destination';
       return res.status(404).json({
         success: false,
-        error: `${normalizedType === 'guide' ? 'Guide' : 'Hotel'} not found.`
+        error: `${label} not found.`
       });
     }
 
     // 6. Prevent self-review if user is also the owner/guide
     const ownerUserId = normalizedType === 'guide'
       ? targetEntity.userId?._id?.toString() || targetEntity.userId?.toString()
-      : targetEntity.ownerId?._id?.toString() || targetEntity.ownerId?.toString();
+      : normalizedType === 'hotel'
+      ? targetEntity.ownerId?._id?.toString() || targetEntity.ownerId?.toString()
+      : null;
     if (ownerUserId && ownerUserId === req.user.id.toString()) {
       return res.status(403).json({
         success: false,
@@ -100,38 +107,38 @@ exports.createReview = async (req, res) => {
     if (existingReview) {
       return res.status(400).json({
         success: false,
-        error: 'You have already submitted a review for this service. You can edit your existing review instead.'
+        error: 'You have already submitted a review for this item. You can edit your existing review instead.'
       });
     }
 
     // 8. Check Booking model to verify if tourist has booked / completed this service
-    const bookingField = normalizedType === 'guide' ? 'guideId' : 'hotelId';
-    const matchingBookings = await Booking.find({
-      touristId: req.user.id,
-      [bookingField]: targetId,
-      status: { $ne: 'Cancelled' }
-    }).sort({ createdAt: -1 });
-
-    // If the user has a booking for this service, verify it is Completed (or Confirmed/Completed)
-    // If they have only a Pending booking for this target, require completion first
     let verifiedBooking = false;
     let verifiedBookingId = null;
 
-    if (matchingBookings.length > 0) {
-      const completedBooking = matchingBookings.find((b) => b.status === 'Completed');
-      const confirmedBooking = matchingBookings.find((b) => b.status === 'Confirmed');
+    if (normalizedType === 'guide' || normalizedType === 'hotel') {
+      const bookingField = normalizedType === 'guide' ? 'guideId' : 'hotelId';
+      const matchingBookings = await Booking.find({
+        touristId: req.user.id,
+        [bookingField]: targetId,
+        status: { $ne: 'Cancelled' }
+      }).sort({ createdAt: -1 });
 
-      if (completedBooking) {
-        verifiedBooking = true;
-        verifiedBookingId = completedBooking._id;
-      } else if (confirmedBooking) {
-        verifiedBooking = true;
-        verifiedBookingId = confirmedBooking._id;
-      } else {
-        return res.status(400).json({
-          success: false,
-          error: 'Your booking for this service is still Pending. You can review once your booking is Confirmed or Completed.'
-        });
+      if (matchingBookings.length > 0) {
+        const completedBooking = matchingBookings.find((b) => b.status === 'Completed');
+        const confirmedBooking = matchingBookings.find((b) => b.status === 'Confirmed');
+
+        if (completedBooking) {
+          verifiedBooking = true;
+          verifiedBookingId = completedBooking._id;
+        } else if (confirmedBooking) {
+          verifiedBooking = true;
+          verifiedBookingId = confirmedBooking._id;
+        } else {
+          return res.status(400).json({
+            success: false,
+            error: 'Your booking for this service is still Pending. You can review once your booking is Confirmed or Completed.'
+          });
+        }
       }
     }
 
@@ -317,6 +324,12 @@ exports.getMyReviews = async (req, res) => {
           if (guide) {
             targetName = guide.name || guide.userId?.name || 'Certified Tour Guide';
             targetDetails = guide;
+          }
+        } else if (rev.targetType === 'destination') {
+          const dest = await Destination.findById(rev.targetId).select('name district category rating').lean();
+          if (dest) {
+            targetName = dest.name;
+            targetDetails = dest;
           }
         }
         return {

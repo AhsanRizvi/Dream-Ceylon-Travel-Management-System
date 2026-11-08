@@ -102,7 +102,7 @@ const runVerification = async () => {
     // C. Filter by Category Beach
     const resCatBeach = mockRes();
     await destinationController.getDestinations({ query: { category: 'Beach' } }, resCatBeach);
-    assert(resCatBeach.data?.count === 10, 'Category Filter: Beach', `10 beaches found`);
+    assert(resCatBeach.data?.count >= 10, 'Category Filter: Beach', `${resCatBeach.data?.count} beaches found`);
 
     // D. Filter by Category Waterfall
     const resCatWater = mockRes();

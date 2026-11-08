@@ -51,13 +51,21 @@ const DestinationSchema = new mongoose.Schema({
   },
   rating: { 
     type: Number, 
-    min: 1, 
+    min: 0, 
     max: 5,
     default: null
+  },
+  reviewCount: {
+    type: Number,
+    default: 0
   },
   viewCount: { 
     type: Number, 
     default: 0 
+  },
+  lastViewedAt: {
+    type: Date,
+    default: null
   },
   bestVisitTime: { 
     type: String 

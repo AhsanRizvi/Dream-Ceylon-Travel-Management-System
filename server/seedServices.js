@@ -4,6 +4,7 @@ const connectDB = require('./config/db');
 const User = require('./models/User');
 const Guide = require('./models/Guide');
 const Hotel = require('./models/Hotel');
+const Destination = require('./models/Destination');
 const Booking = require('./models/Booking');
 const Review = require('./models/Review');
 const { recalculateTargetRating } = require('./services/ratingService');
@@ -643,6 +644,168 @@ const seedServicesAndReviews = async () => {
       ]);
     }
 
+transpotation
+    // 5. Seed Sample Destination Reviews if none exist yet (Module 7 & Module 5 Integration)
+    const destReviewCount = await Review.countDocuments({ targetType: 'destination' });
+    if (destReviewCount === 0) {
+      const sigiriya = await Destination.findOne({ name: 'Sigiriya Rock Fortress' }) || await Destination.findOne({ name: 'Sigiriya' });
+      const mirissa = await Destination.findOne({ name: 'Mirissa Beach' }) || await Destination.findOne({ name: 'Mirissa' });
+      const ella = await Destination.findOne({ name: 'Ella' });
+      const galle = await Destination.findOne({ name: 'Galle Fort' });
+      const yala = await Destination.findOne({ name: 'Yala National Park' });
+      const kandy = await Destination.findOne({ name: 'Temple of the Tooth (Kandy)' }) || await Destination.findOne({ name: 'Kandy' });
+
+      const destReviewsToInsert = [];
+
+      if (sigiriya) {
+        destReviewsToInsert.push(
+          {
+            authorId: tourist1._id,
+            targetType: 'destination',
+            targetId: sigiriya._id,
+            score: 5,
+            comment: 'Climbing Sigiriya at sunrise was breathtaking! The water gardens, mirror wall, and ancient frescoes are world-class.',
+            verifiedBooking: true,
+            status: 'active'
+          },
+          {
+            authorId: tourist2._id,
+            targetType: 'destination',
+            targetId: sigiriya._id,
+            score: 5,
+            comment: 'Unforgettable UNESCO World Heritage fortress. Arrive before 7:30 AM to beat the midday heat and crowds.',
+            verifiedBooking: true,
+            status: 'active'
+          },
+          {
+            authorId: tourist3._id,
+            targetType: 'destination',
+            targetId: sigiriya._id,
+            score: 5,
+            comment: 'The 360-degree view from the summit palace ruins over the jungle canopy is the highlight of Sri Lanka.',
+            verifiedBooking: false,
+            status: 'active'
+          }
+        );
+      }
+
+      if (ella) {
+        destReviewsToInsert.push(
+          {
+            authorId: tourist1._id,
+            targetType: 'destination',
+            targetId: ella._id,
+            score: 5,
+            comment: 'Ella has the best mountain views, cool misty air, and hiking trails to Little Adams Peak and Nine Arch Bridge.',
+            verifiedBooking: true,
+            status: 'active'
+          },
+          {
+            authorId: tourist2._id,
+            targetType: 'destination',
+            targetId: ella._id,
+            score: 5,
+            comment: 'Loved watching the blue train cross the Nine Arch Bridge surrounded by lush green tea estates!',
+            verifiedBooking: true,
+            status: 'active'
+          }
+        );
+      }
+
+      if (mirissa) {
+        destReviewsToInsert.push(
+          {
+            authorId: tourist2._id,
+            targetType: 'destination',
+            targetId: mirissa._id,
+            score: 5,
+            comment: 'Saw blue whales and spinner dolphins on our morning boat tour, followed by sunset at Coconut Tree Hill!',
+            verifiedBooking: true,
+            status: 'active'
+          },
+          {
+            authorId: tourist3._id,
+            targetType: 'destination',
+            targetId: mirissa._id,
+            score: 4,
+            comment: 'Golden sandy bay with great beachfront seafood restaurants and gentle surf.',
+            verifiedBooking: false,
+            status: 'active'
+          }
+        );
+      }
+
+      if (galle) {
+        destReviewsToInsert.push(
+          {
+            authorId: tourist1._id,
+            targetType: 'destination',
+            targetId: galle._id,
+            score: 5,
+            comment: 'Walking along the Dutch Fort ramparts at sunset and exploring the cobblestone cafes was magical.',
+            verifiedBooking: true,
+            status: 'active'
+          },
+          {
+            authorId: tourist3._id,
+            targetType: 'destination',
+            targetId: galle._id,
+            score: 5,
+            comment: 'Rich colonial architecture, boutique galleries, and iconic lighthouse views.',
+            verifiedBooking: false,
+            status: 'active'
+          }
+        );
+      }
+
+      if (yala) {
+        destReviewsToInsert.push(
+          {
+            authorId: tourist3._id,
+            targetType: 'destination',
+            targetId: yala._id,
+            score: 5,
+            comment: 'Spotted leopards, elephants, sloth bears, and crocodiles on a single morning jeep safari!',
+            verifiedBooking: true,
+            status: 'active'
+          }
+        );
+      }
+
+      if (kandy) {
+        destReviewsToInsert.push(
+          {
+            authorId: tourist1._id,
+            targetType: 'destination',
+            targetId: kandy._id,
+            score: 5,
+            comment: 'Deeply spiritual cultural experience at the Temple of the Sacred Tooth Relic beside Kandy Lake.',
+            verifiedBooking: true,
+            status: 'active'
+          },
+          {
+            authorId: tourist2._id,
+            targetType: 'destination',
+            targetId: kandy._id,
+            score: 4,
+            comment: 'Beautiful architecture and evening ceremonial drumming. Remember to wear modest attire covering shoulders and knees.',
+            verifiedBooking: true,
+            status: 'active'
+          }
+        );
+      }
+
+      if (destReviewsToInsert.length > 0) {
+        await Review.insertMany(destReviewsToInsert);
+        const reviewedTargets = [sigiriya, ella, mirissa, galle, yala, kandy].filter(Boolean);
+        for (const d of reviewedTargets) {
+          await recalculateTargetRating('destination', d._id);
+        }
+        console.log(`Seeded ${destReviewsToInsert.length} destination reviews and synchronized destination ratings.`);
+      }
+    }
+
+    console.log('Module 5 Services & Reviews Seeding Complete!');
     // Synchronize ratings on all guides and hotels
     for (const g of guides) {
       await recalculateTargetRating('guide', g._id);
@@ -651,7 +814,8 @@ const seedServicesAndReviews = async () => {
       await recalculateTargetRating('hotel', h._id);
     }
 
-    console.log('Module 4 & 5 Services, Rooms, Bookings & Reviews Seeding Complete!');
+
+    main
     process.exit(0);
   } catch (err) {
     console.error('Seed Error:', err.message);

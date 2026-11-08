@@ -25,6 +25,7 @@ const Navbar = () => {
           </div>
           <div className="flex items-center space-x-6">
             <Link to="/destinations" className="hover:text-yellow-400 transition">Destinations</Link>
+            <Link to="/routes" className="hover:text-yellow-400 transition">Routes & Map</Link>
             <Link to="/planner" className="hover:text-yellow-400 transition">Smart Planner</Link>
             <Link to="/packages" className="hover:text-yellow-400 transition">Packages</Link>
             <Link to="/hotels" className="hover:text-yellow-400 transition">Hotels</Link>

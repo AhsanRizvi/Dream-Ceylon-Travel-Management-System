@@ -6,6 +6,7 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Planner from './pages/Planner';
+import RoutePlanner from './pages/RoutePlanner';
 import Destinations from './pages/Destinations';
 import DestinationDetails from './pages/DestinationDetails';
 import Hotels from './pages/Hotels';
@@ -28,6 +29,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/planner" element={<Planner />} />
+          <Route path="/routes" element={<RoutePlanner />} />
           <Route path="/destinations" element={<Destinations />} />
           <Route path="/destinations/:id" element={<DestinationDetails />} />
           <Route path="/hotels" element={<Hotels />} />
