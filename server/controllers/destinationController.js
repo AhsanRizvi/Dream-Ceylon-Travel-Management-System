@@ -1,9 +1,16 @@
 const mongoose = require('mongoose');
 const Destination = require('../models/Destination');
+
+const mongoose = require('mongoose');
+const Destination = require('../models/Destination');
+
+const { enrichDestinationMetadata } = require('../services/recommendationEngine');
+
 const Review = require('../models/Review');
 const TourPlan = require('../models/TourPlan');
 const Hotel = require('../models/Hotel');
 const Guide = require('../models/Guide');
+
 
 /**
  * Dream Ceylon Tourism Management System
@@ -167,13 +174,32 @@ exports.getDestinations = async (req, res) => {
 
     // Category filter (handles category aliases and case-insensitivity)
     if (category && category !== 'All') {
-      const catLower = category.toLowerCase();
-      if (catLower === 'historical' || catLower === 'cultural') {
-        filter.category = { $in: [/^historical/i, /^cultural/i] };
-      } else if (catLower === 'wildlife' || catLower === 'nature') {
-        filter.category = { $in: [/^wildlife/i, /^nature/i, /^forest/i] };
+
+    // Category filter (supports aliases and case-insensitive matching)
+    if (category && category !== 'All') {
+      const catLower = category.trim().toLowerCase();
+
+      if (catLower === 'cultural' || catLower === 'historical') {
+        filter.category = {
+          $in: [/^cultural$/i, /^historical$/i]
+        };
       } else if (catLower === 'mountain' || catLower === 'mountains') {
-        filter.category = { $in: [/^mountain/i] };
+        filter.category = {
+          $in: [/^mountain$/i, /^mountains$/i]
+        };
+      } else if (
+        catLower === 'wildlife' ||
+        catLower === 'forest' ||
+        catLower === 'nature'
+      ) {
+        filter.category = {
+          $in: [/^wildlife/i, /^forest/i, /^nature/i]
+        };
+      } else {
+        filter.category = new RegExp(`^${category}$`, 'i');
+      }
+    }
+
       } else {
         filter.category = new RegExp(`^${category}$`, 'i');
       }
@@ -208,20 +234,40 @@ exports.getDestinations = async (req, res) => {
       ];
     }
 
+
     // Sorting options
     let sortOption = { rating: -1, viewCount: -1 };
-    if (sort === 'name-asc') sortOption = { name: 1 };
-    if (sort === 'name-desc') sortOption = { name: -1 };
-    if (sort === 'views') sortOption = { viewCount: -1, rating: -1 };
-    if (sort === 'rating') sortOption = { rating: -1, viewCount: -1 };
 
+    if (sort === 'name-asc') {
+      sortOption = { name: 1 };
+    }
+
+    if (sort === 'name-desc') {
+      sortOption = { name: -1 };
+    }
+
+    if (sort === 'views') {
+      sortOption = { viewCount: -1, rating: -1 };
+    }
+
+    if (sort === 'rating') {
+      sortOption = { rating: -1, viewCount: -1 };
+    }
+
+    // Fetch destinations with sorting
     const destinations = await Destination.find(filter).sort(sortOption);
 
-    res.status(200).json({ 
-      success: true, 
-      count: destinations.length, 
-      data: destinations 
+    // Enrich destination metadata using recommendation engine
+    const enriched = destinations.map((destination) =>
+      enrichDestinationMetadata(destination)
+    );
+
+    res.status(200).json({
+      success: true,
+      count: enriched.length,
+      data: enriched
     });
+
   } catch (err) {
     console.error('Error in getDestinations:', err);
     res.status(500).json({ success: false, error: err.message });
@@ -834,11 +880,16 @@ exports.getLastMinuteRecommendations = async (req, res) => {
 // Get single destination by ID (and track view counts unless skipView=true)
 exports.getDestinationById = async (req, res) => {
   try {
+
+// Get single destination by ID and track view counts
+exports.getDestinationById = async (req, res) => {
+  try {
     const skipView =
       req.query?.skipView === 'true' ||
       req.headers?.['x-background-fetch'] === 'true';
 
     let destination;
+
     if (skipView) {
       destination = await Destination.findById(req.params.id);
     } else {
@@ -853,10 +904,13 @@ exports.getDestinationById = async (req, res) => {
     }
 
     if (!destination) {
-      return res.status(404).json({ success: false, error: 'Destination not found' });
+      return res.status(404).json({
+        success: false,
+        error: 'Destination not found'
+      });
     }
 
-    // Attach live review statistics from Review collection
+    // Get active destination review statistics
     const reviewAgg = await Review.aggregate([
       {
         $match: {
@@ -872,16 +926,42 @@ exports.getDestinationById = async (req, res) => {
           totalReviews: { $sum: 1 }
         }
       }
-    ]).catch(() => []);
+    ]);
 
-    const destObj = destination.toObject ? destination.toObject() : { ...destination };
+    // Convert Mongoose document into plain object
+    const destObj = destination.toObject
+      ? destination.toObject()
+      : { ...destination };
+
+    // Attach live review information
     if (reviewAgg.length > 0) {
       destObj.reviewCount = reviewAgg[0].totalReviews;
-      destObj.reviewAverageRating = Number(reviewAgg[0].averageRating.toFixed(1));
+
+      destObj.reviewAverageRating = Number(
+        reviewAgg[0].averageRating.toFixed(1)
+      );
+
       destObj.rating = destObj.reviewAverageRating;
     }
 
-    res.status(200).json({ success: true, data: destObj });
+    // Enrich destination metadata
+    const enrichedDestination = enrichDestinationMetadata(destObj);
+
+    return res.status(200).json({
+      success: true,
+      data: enrichedDestination
+    });
+
+  } catch (err) {
+    console.error('Error in getDestinationById:', err);
+
+    return res.status(400).json({
+      success: false,
+      error: err.message
+    });
+  }
+};
+
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
   }
