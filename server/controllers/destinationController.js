@@ -1,9 +1,6 @@
 const mongoose = require('mongoose');
 const Destination = require('../models/Destination');
 
-const mongoose = require('mongoose');
-const Destination = require('../models/Destination');
-
 const { enrichDestinationMetadata } = require('../services/recommendationEngine');
 
 const Review = require('../models/Review');
@@ -172,9 +169,6 @@ exports.getDestinations = async (req, res) => {
     const { category, district, province, tag, search, sort } = req.query;
     let filter = {};
 
-    // Category filter (handles category aliases and case-insensitivity)
-    if (category && category !== 'All') {
-
     // Category filter (supports aliases and case-insensitive matching)
     if (category && category !== 'All') {
       const catLower = category.trim().toLowerCase();
@@ -195,11 +189,6 @@ exports.getDestinations = async (req, res) => {
         filter.category = {
           $in: [/^wildlife/i, /^forest/i, /^nature/i]
         };
-      } else {
-        filter.category = new RegExp(`^${category}$`, 'i');
-      }
-    }
-
       } else {
         filter.category = new RegExp(`^${category}$`, 'i');
       }
@@ -877,10 +866,6 @@ exports.getLastMinuteRecommendations = async (req, res) => {
   }
 };
 
-// Get single destination by ID (and track view counts unless skipView=true)
-exports.getDestinationById = async (req, res) => {
-  try {
-
 // Get single destination by ID and track view counts
 exports.getDestinationById = async (req, res) => {
   try {
@@ -959,11 +944,6 @@ exports.getDestinationById = async (req, res) => {
       success: false,
       error: err.message
     });
-  }
-};
-
-  } catch (err) {
-    res.status(400).json({ success: false, error: err.message });
   }
 };
 

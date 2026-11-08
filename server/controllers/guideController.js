@@ -1,7 +1,5 @@
 const jwt = require('jsonwebtoken');
 const Guide = require('../models/Guide');
-const jwt = require('jsonwebtoken');
-const Guide = require('../models/Guide');
 const { normalizeToLKR, getExchangeRates, SUPPORTED_CURRENCIES } = require('../services/currencyService');
 const User = require('../models/User');
 const Booking = require('../models/Booking');
@@ -187,12 +185,6 @@ exports.registerGuide = async (req, res) => {
   }
 };
 
-// @desc    Get all registered guides with discovery filters
-// @route   GET /api/guides
-// @access  Public
-exports.getGuides = async (req, res) => {
-  try {
-
 // @desc    Get all registered guides with discovery filters and currency conversion
 // @route   GET /api/guides
 // @access  Public
@@ -363,6 +355,34 @@ exports.getGuides = async (req, res) => {
   }
 };
 
+// @desc    Get single guide details by ID
+// @route   GET /api/guides/:id
+// @access  Public
+exports.getGuideById = async (req, res) => {
+  try {
+    const guide = await Guide.findById(req.params.id).populate('userId', 'name email profileImage');
+    if (!guide) {
+      return res.status(404).json({ success: false, error: 'Tour guide not found' });
+    }
+
+    // Fetch upcoming confirmed booking ranges to show real availability
+    const confirmedBookings = await Booking.find({
+      guideId: guide._id,
+      status: 'Confirmed',
+      endDate: { $gte: new Date() }
+    })
+      .select('startDate endDate serviceDays status')
+      .lean();
+
+    const completion = computeGuideProfileCompletion(guide);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        ...guide.toObject(),
+        profileCompletion: completion,
+        confirmedBookingRanges: confirmedBookings
+      }
     });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
@@ -647,12 +667,6 @@ exports.checkGuideAvailability = async (req, res) => {
 exports.createGuide = async (req, res) => {
   try {
     req.body.userId = req.user.id;
-// @desc    Create guide (legacy endpoint with ownership assignment)
-// @route   POST /api/guides
-// @access  Private (guide, admin)
-exports.createGuide = async (req, res) => {
-  try {
-    req.body.userId = req.user.id;
 
     // Set guide name from authenticated user if not provided
     if (!req.body.name) {
@@ -682,12 +696,6 @@ exports.createGuide = async (req, res) => {
       success: false,
       error: err.message
     });
-  }
-};
-    const guide = await Guide.create(req.body);
-    res.status(201).json({ success: true, data: guide });
-  } catch (err) {
-    res.status(400).json({ success: false, error: err.message });
   }
 };
 

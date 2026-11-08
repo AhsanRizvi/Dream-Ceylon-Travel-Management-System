@@ -1,5 +1,4 @@
 const Hotel = require('../models/Hotel');
-const Hotel = require('../models/Hotel');
 const { normalizeToLKR, getExchangeRates, SUPPORTED_CURRENCIES } = require('../services/currencyService');
 const User = require('../models/User');
 const Booking = require('../models/Booking');
@@ -159,12 +158,6 @@ exports.registerHotel = async (req, res) => {
     res.status(400).json({ success: false, error: err.message });
   }
 };
-
-// @desc    Get all hotels with discovery filters
-// @route   GET /api/hotels
-// @access  Public
-exports.getHotels = async (req, res) => {
-  try {
 
 // @desc    Get all hotels with discovery filters and currency conversion
 // @route   GET /api/hotels
@@ -350,6 +343,30 @@ exports.getHotels = async (req, res) => {
   }
 };
 
+// @desc    Get single hotel details by ID
+// @route   GET /api/hotels/:id
+// @access  Public
+exports.getHotelById = async (req, res) => {
+  try {
+    const hotel = await Hotel.findById(req.params.id).populate('ownerId', 'name email');
+    if (!hotel) {
+      return res.status(404).json({ success: false, error: 'Hotel not found' });
+    }
+
+    const confirmedBookings = await Booking.find({
+      hotelId: hotel._id,
+      status: 'Confirmed',
+      checkOutDate: { $gte: new Date() }
+    })
+      .select('roomId roomType roomQuantity checkInDate checkOutDate status')
+      .lean();
+
+    res.status(200).json({
+      success: true,
+      data: {
+        ...hotel.toObject(),
+        confirmedBookings
+      }
     });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
@@ -417,12 +434,6 @@ exports.getMyOwnerHotels = async (req, res) => {
 exports.createHotel = async (req, res) => {
   try {
     req.body.ownerId = req.user.id;
-// @desc    Create hotel (authenticated hotel_owner/admin)
-// @route   POST /api/hotels
-// @access  Private (hotel_owner, admin)
-exports.createHotel = async (req, res) => {
-  try {
-    req.body.ownerId = req.user.id;
 
     // Normalize hotel price to LKR
     if (req.body.pricePerNight) {
@@ -465,12 +476,6 @@ exports.createHotel = async (req, res) => {
       success: false,
       error: err.message
     });
-  }
-};
-    const hotel = await Hotel.create(req.body);
-    res.status(201).json({ success: true, data: hotel });
-  } catch (err) {
-    res.status(400).json({ success: false, error: err.message });
   }
 };
 
