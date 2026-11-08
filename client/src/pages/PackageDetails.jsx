@@ -182,26 +182,51 @@ const PackageDetails = () => {
 
       <div className="bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100">
         {/* Hero Header */}
-        <div className="bg-gradient-to-r from-blue-950 via-blue-900 to-indigo-900 p-8 md:p-12 text-white">
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-            <span className="bg-blue-500/30 text-blue-200 border border-blue-400/40 text-xs font-bold uppercase tracking-wider px-3.5 py-1.5 rounded-full">
-              {pkg.badge || `${pkg.packageName} Tier`}
-            </span>
-            <div className="flex items-center gap-3">
-              {pkg.packageName === 'Premium' && (
-                <span className="flex items-center bg-amber-400/20 text-amber-300 border border-amber-400/30 text-xs font-bold px-3 py-1 rounded-full">
-                  <Sparkles size={14} className="mr-1.5" /> All-Inclusive VIP Experience
-                </span>
-              )}
-              <span className="bg-white/10 text-yellow-300 border border-white/20 text-xs font-bold px-3 py-1 rounded-full">
-                Starting: {baseDual.primary}/person/day
-              </span>
-            </div>
-          </div>
-          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-3">
-            {pkg.packageName} Tour Package
-          </h1>
-          <p className="text-blue-100 text-lg max-w-3xl leading-relaxed">{pkg.description}</p>
+
+{/* Hero Header */}
+<div className="relative p-8 md:p-12 text-white overflow-hidden bg-slate-900">
+  {(pkg.image || pkg.imageUrl) ? (
+    <img
+      src={pkg.image || pkg.imageUrl}
+      alt={pkg.packageName}
+      className="absolute inset-0 w-full h-full object-cover"
+    />
+  ) : (
+    <div className="absolute inset-0 bg-gradient-to-r from-blue-950 via-blue-900 to-indigo-900" />
+  )}
+
+  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/50 to-black/30" />
+
+  <div className="relative z-10">
+    <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+      <span className="bg-blue-500/50 backdrop-blur-sm text-blue-100 border border-blue-400/40 text-xs font-bold uppercase tracking-wider px-3.5 py-1.5 rounded-full">
+        {pkg.badge || `${pkg.packageName} Tier`}
+      </span>
+
+      <div className="flex items-center gap-3">
+        {pkg.packageName === 'Premium' && (
+          <span className="flex items-center bg-amber-400/30 backdrop-blur-sm text-amber-200 border border-amber-400/40 text-xs font-bold px-3 py-1 rounded-full">
+            <Sparkles size={14} className="mr-1.5" />
+            All-Inclusive VIP Experience
+          </span>
+        )}
+
+        <span className="bg-white/20 backdrop-blur-sm text-yellow-300 border border-white/30 text-xs font-bold px-3 py-1 rounded-full">
+          Starting: {baseDual.primary}/person/day
+        </span>
+      </div>
+    </div>
+
+    <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-3">
+      {pkg.packageName} Tour Package
+    </h1>
+
+    <p className="text-blue-100 text-lg max-w-3xl leading-relaxed drop-shadow">
+      {pkg.description}
+    </p>
+  </div>
+</div>
+
         </div>
 
         {/* Content Body */}

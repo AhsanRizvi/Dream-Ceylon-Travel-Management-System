@@ -10,10 +10,32 @@ const PackageSchema = new mongoose.Schema({
   badge: { type: String },
   tagline: { type: String },
   description: { type: String },
-  currency: { type: String, default: 'LKR' },
-  baseCharge: { type: Number, required: true }, // Stored in LKR (authoritative base currency)
-  baseChargeLKR: { type: Number }, // Explicit LKR mirror field
-  startingPriceLKR: { type: Number },
+
+  currency: {
+    type: String,
+    default: 'LKR'
+  },
+
+  // Base price is stored in LKR
+  baseCharge: {
+    type: Number,
+    required: true
+  },
+  baseChargeLKR: {
+    type: Number
+  },
+  startingPriceLKR: {
+    type: Number
+  },
+
+  // Package images
+  image: {
+    type: String
+  },
+  imageUrl: {
+    type: String
+  },
+
   includedFacilities: [{ type: String }],
   excludedFacilities: [{ type: String }],
   optionalServices: [{ type: String }],

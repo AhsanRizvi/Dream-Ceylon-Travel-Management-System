@@ -18,16 +18,33 @@ const Navbar = () => {
               Dream Ceylon
             </Link>
           </div>
-          <div className="flex items-center space-x-5">
-            <Link to="/destinations" className="hover:text-yellow-400 transition text-sm font-medium">Destinations</Link>
-            <Link to="/planner" className="hover:text-yellow-400 transition text-sm font-medium">Smart Planner</Link>
-            <Link to="/packages" className="hover:text-yellow-400 transition text-sm font-medium">Packages</Link>
-            <Link to="/hotels" className="hover:text-yellow-400 transition text-sm font-medium">Hotels</Link>
-            <Link to="/guides" className="hover:text-yellow-400 transition text-sm font-medium">Guides</Link>
+<div className="flex items-center space-x-5">
+    <Link to="/destinations" className="hover:text-yellow-400 transition text-sm font-medium">
+        Destinations
+    </Link>
 
-            {/* Module 8 Global Currency Selector (Default: LKR) */}
-            <CurrencySelector />
+    <Link to="/routes" className="hover:text-yellow-400 transition text-sm font-medium">
+        Routes & Map
+    </Link>
 
+    <Link to="/planner" className="hover:text-yellow-400 transition text-sm font-medium">
+        Smart Planner
+    </Link>
+
+    <Link to="/packages" className="hover:text-yellow-400 transition text-sm font-medium">
+        Packages
+    </Link>
+
+    <Link to="/hotels" className="hover:text-yellow-400 transition text-sm font-medium">
+        Hotels
+    </Link>
+
+    <Link to="/guides" className="hover:text-yellow-400 transition text-sm font-medium">
+        Guides
+    </Link>
+
+    {/* Module 8 Global Currency Selector (Default: LKR) */}
+    <CurrencySelector />
             {user ? (
               <ProfileDropdown />
             ) : (

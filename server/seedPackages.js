@@ -1,22 +1,26 @@
+const path = require('path');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const Package = require('./models/Package');
 const connectDB = require('./config/db');
 
-dotenv.config();
-connectDB();
+dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 const packages = [
   {
     packageName: 'Basic',
+
     badge: 'Route & Transport Essentials',
     tagline: 'Destination recommendations, day-by-day itinerary & private transport for independent explorers',
     description:
       'Includes personalized destination recommendations, turn-by-turn travel route, day-by-day itinerary schedule, basic trip planning assistance, and estimated transportation costs. Hotel accommodation, food, and tour guide services are not automatically included.',
     currency: 'LKR',
-    baseCharge: 25500, // Rs. 25,500 (~$85/day starting reference)
+    baseCharge: 25500,
     baseChargeLKR: 25500,
     startingPriceLKR: 25500,
+    image: 'https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&w=1200&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&w=1200&q=80',
+
     features: {
       transport: 'Motorcycle, Sedan Car, or Passenger Van with Route Cost Estimation',
       accommodation: 'Not Included (Self-arranged by tourist)',
@@ -69,13 +73,17 @@ const packages = [
   {
     packageName: 'Standard',
     badge: 'Accommodation & Non-Food Facilities',
+
     tagline: 'All Basic features plus partner hotel selection & essential non-food travel amenities',
     description:
       'Includes all Basic package features (recommendations, route, day-by-day itinerary, and transport) plus handpicked 3 to 4-star accommodation options, partner hotel & room selection, relevant non-food facilities, and full accommodation cost calculation. Food services are excluded by default; a licensed tour guide can be added optionally.',
     currency: 'LKR',
-    baseCharge: 54000, // Rs. 54,000 (~$180/day starting reference)
+    baseCharge: 54000,
     baseChargeLKR: 54000,
     startingPriceLKR: 54000,
+    image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1200&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1200&q=80',
+
     features: {
       transport: 'Dedicated Air-Conditioned Vehicle (Motorcycle / Car / Van) with Chauffeur',
       accommodation: 'Handpicked 3 to 4-Star Partner Hotels & Eco-Lodges (Selectable)',
@@ -113,7 +121,10 @@ const packages = [
     ],
     allowHotelSelection: true,
     allowGuideAddon: true,
-    guideAddonPrice: 13500, // Rs. 13,500/day (~$45/day)
+
+    allowGuideAddon: true,
+    guideAddonPrice: 13500,
+
     allowMealSelection: false,
     allowGuideSelection: false,
     mealOptions: [],
@@ -128,14 +139,18 @@ const packages = [
   },
   {
     packageName: 'Premium',
+
     badge: 'Complete All-Inclusive Experience',
     tagline: 'All Standard features plus full-board dining, meal preferences & specialist tour guides',
     description:
       'The complete Sri Lankan luxury experience. Includes all Standard package features (itinerary, route, transport, and 5-star hotel accommodations) plus full-board food & meal plans (Vegetarian, Vegan, Seafood, All meat types), specialist or registered tour guide selection, guide charges, and complete package cost calculation.',
     currency: 'LKR',
-    baseCharge: 105000, // Rs. 105,000 (~$350/day starting reference)
+    baseCharge: 105000,
     baseChargeLKR: 105000,
     startingPriceLKR: 105000,
+    image: 'https://images.unsplash.com/photo-1582719508461-905c673771fd?auto=format&fit=crop&w=1200&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1582719508461-905c673771fd?auto=format&fit=crop&w=1200&q=80',
+
     features: {
       transport: 'Executive Air-Conditioned Vehicle (Car / VIP Van / Touring Bike) with Chauffeur',
       accommodation: '5-Star Luxury Resorts, Heritage Villas & Boutique Tea Bungalows',
@@ -169,12 +184,16 @@ const packages = [
       'International airfares and visa processing fees',
       'Personal shopping and discretionary gratuities'
     ],
+
     optionalServices: [
       'Choose specific Partner Hotel & luxury suite from database',
       'Choose specific certified Tour Guide from database or specialist profile',
       'Customize daily meal plan (Vegetarian, Vegan, Seafood, All meat types)'
     ],
     allowHotelSelection: true,
+    allowGuideAddon: false,
+    guideAddonPrice: 0,
+
     allowGuideAddon: false,
     guideAddonPrice: 0,
     allowMealSelection: true,
@@ -251,9 +270,42 @@ const packages = [
 
 const seedPackages = async () => {
   try {
-    await Package.deleteMany();
-    await Package.insertMany(packages);
-    console.log('Packages Seeded Successfully in LKR with Complete Module 3 Rules!');
+
+const seedPackages = async () => {
+  try {
+    await connectDB();
+
+    // Safe upsert: update existing packages or insert missing packages
+    for (const p of packages) {
+      await Package.findOneAndUpdate(
+        { packageName: p.packageName },
+        { $set: p },
+        { upsert: true, new: true, runValidators: true }
+      );
+    }
+
+    const count = await Package.countDocuments();
+
+    console.log(
+      `Packages Seeded Safely in LKR! Total in DB: ${count}`
+    );
+
+    await mongoose.connection.close();
+    process.exit(0);
+
+  } catch (error) {
+    console.error(`Error: ${error.message}`);
+
+    if (mongoose.connection.readyState !== 0) {
+      await mongoose.connection.close();
+    }
+
+    process.exit(1);
+  }
+};
+
+seedPackages();
+
     process.exit(0);
   } catch (error) {
     console.error(`Error: ${error.message}`);
