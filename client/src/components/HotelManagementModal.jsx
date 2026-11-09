@@ -239,7 +239,7 @@ const HotelManagementModal = ({ isOpen, onClose, onHotelSaved, hotelToEdit = nul
           <form id="hotel-form" onSubmit={handleSubmit} className="space-y-6">
             
             {/* Core Details */}
-            <div className="grid sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-gray-700 uppercase mb-1.5 flex items-center gap-1">
                   <Building2 size={13} className="text-blue-600" /> Hotel / Property Name *
@@ -270,7 +270,7 @@ const HotelManagementModal = ({ isOpen, onClose, onHotelSaved, hotelToEdit = nul
             </div>
 
             {/* Pricing, Phone & Image */}
-            <div className="grid sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-bold text-gray-700 uppercase mb-1.5 flex items-center gap-1">
                   <DollarSign size={13} className="text-green-600" /> Base Price / Night (USD) *

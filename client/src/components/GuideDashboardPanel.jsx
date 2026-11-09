@@ -417,7 +417,7 @@ const GuideDashboardPanel = () => {
         {/* Profile Editor Form */}
         {editingProfile ? (
           <form onSubmit={handleSaveProfile} className="p-6 space-y-4 bg-blue-50/20">
-            <div className="grid sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">Full Name *</label>
                 <input
@@ -458,7 +458,7 @@ const GuideDashboardPanel = () => {
               </div>
             </div>
 
-            <div className="grid sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">
                   Languages Spoken (Comma separated)
@@ -571,7 +571,7 @@ const GuideDashboardPanel = () => {
           <div className="p-6 space-y-4">
             <p className="text-sm text-gray-600">{guideData?.bio}</p>
 
-            <div className="grid sm:grid-cols-3 gap-4 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
               <div className="bg-gray-50 p-3.5 rounded-2xl">
                 <span className="font-bold text-gray-900 block mb-1">Service Areas</span>
                 <span className="text-gray-600">
@@ -603,7 +603,7 @@ const GuideDashboardPanel = () => {
           <Calendar size={18} className="text-blue-600" /> Schedule & Blocked Date Ranges
         </h3>
 
-        <form onSubmit={handleAddUnavailableDates} className="grid sm:grid-cols-4 gap-3 items-end">
+        <form onSubmit={handleAddUnavailableDates} className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
           <div>
             <label className="block text-[11px] font-bold uppercase text-gray-600 mb-1">
               From Date

@@ -233,7 +233,7 @@ const Guides = () => {
           <h2 className="text-xl md:text-2xl font-bold mb-4">
             Most Trusted Guides by Verified Tourists
           </h2>
-          <div className="grid md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {popularGuides.map((g, idx) => (
               <Link
                 key={g._id}
@@ -284,7 +284,7 @@ const Guides = () => {
           </button>
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {/* Search Input */}
           <div className="relative sm:col-span-2">
             <Search
@@ -403,7 +403,7 @@ const Guides = () => {
           </p>
         </div>
       ) : (
-        <div className="grid md:grid-cols-2 gap-6 items-start">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
           {filteredGuides.map((guide) => {
             const displayName = getGuideDisplayName(guide);
             const isExpanded = selectedGuideId === guide._id;
@@ -492,7 +492,7 @@ const Guides = () => {
                     </div>
                   )}
 
-                  <div className="grid sm:grid-cols-2 gap-3 pt-1 text-xs text-gray-700">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 text-xs text-gray-700">
                     <div className="flex items-start gap-2 bg-gray-50 p-3 rounded-xl">
                       <MapPin size={15} className="text-blue-600 flex-shrink-0 mt-0.5" />
                       <div>

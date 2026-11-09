@@ -212,7 +212,7 @@ const DestinationDetails = () => {
         </div>
 
         {/* Main Content Grid */}
-        <div className="p-6 md:p-10 grid lg:grid-cols-3 gap-10">
+        <div className="p-6 md:p-10 grid grid-cols-1 lg:grid-cols-3 gap-10">
           
           {/* Left 2 Columns: About, Tags, Interactive Map & Reviews */}
           <div className="lg:col-span-2 space-y-8">

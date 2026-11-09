@@ -168,7 +168,7 @@ const Dashboard = () => {
       </div>
 
       {/* Dashboard Grid */}
-      <div className="grid md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
 
         {/* Left Navigation */}
         <div className="col-span-1 space-y-6">
@@ -251,7 +251,7 @@ const Dashboard = () => {
                   Your Activity Overview
                 </h2>
 
-                <div className="grid md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
                   {/* Saved Plans */}
                   <div className="bg-gradient-to-br from-green-500 to-green-600 p-6 rounded-xl text-white shadow-md">

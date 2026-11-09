@@ -802,7 +802,7 @@ const Planner = () => {
               </p>
             </div>
 
-            <div className="grid sm:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
               <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200">
                 <label className="block text-xs font-extrabold uppercase text-gray-700 mb-2">
                   1. Number of Travel Days *
@@ -925,7 +925,7 @@ const Planner = () => {
           </div>
 
           {/* SECTION 3: Preferred Meal Type & Preferred Weather */}
-          <div className="grid lg:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* 3. Preferred Meal Type */}
             <div className="space-y-3">
               <div className="border-b border-gray-100 pb-2">
@@ -937,7 +937,7 @@ const Planner = () => {
                   Used for daily itinerary dining recommendations and package meal planning.
                 </p>
               </div>
-              <div className="grid sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {MEAL_OPTIONS.map((meal) => {
                   const isSelected = formData.mealType === meal.name;
                   return (
@@ -972,7 +972,7 @@ const Planner = () => {
                   Matches Sri Lanka’s climatic zones (Cool hill country vs Hot tropical coast).
                 </p>
               </div>
-              <div className="grid sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {WEATHER_OPTIONS.map((w) => {
                   const isSelected = formData.weatherPreference === w.name;
                   return (
@@ -998,7 +998,7 @@ const Planner = () => {
           </div>
 
           {/* SECTION 4: Transportation & Guide Requirement */}
-          <div className="grid lg:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* 6. Transportation */}
             <div className="space-y-3">
               <div className="border-b border-gray-100 pb-2">
@@ -1010,7 +1010,7 @@ const Planner = () => {
                   Determines road travel time estimates and route calculations.
                 </p>
               </div>
-              <div className="grid sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {TRANSPORT_OPTIONS.map((tr) => {
                   const isSelected = formData.transportation === tr.name;
                   return (
@@ -1045,7 +1045,7 @@ const Planner = () => {
                   Choose whether you require a licensed Sri Lankan tour guide.
                 </p>
               </div>
-              <div className="grid sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {[
                   {
                     name: 'Required',
@@ -1096,7 +1096,7 @@ const Planner = () => {
               </p>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {availablePackages.map((pkg) => {
                 const isSelected = formData.packageLevel === pkg.packageName;
                 return (
@@ -1352,7 +1352,7 @@ const Planner = () => {
                 </span>
               </div>
 
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {recommendations.map((recItem) => {
                   const dest = recItem.destination;
                   const selIdx = selectedDestinations.findIndex((d) => d._id === dest._id);
@@ -2442,7 +2442,7 @@ const TripBuilderWizard = () => {
                       Select the package that suits your journey.
                     </p>
 
-                    <div className="grid md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       {availablePackages.map((pkg) => {
                         const isSelected =
                           activePackage?.packageName === pkg.packageName;
@@ -2521,7 +2521,7 @@ const TripBuilderWizard = () => {
                           Select Partner Hotel
                         </h4>
 
-                        <div className="grid sm:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                           <div className="sm:col-span-2">
                             <label className="block text-xs font-semibold mb-1">
                               Partner Hotel Property
@@ -2589,7 +2589,7 @@ const TripBuilderWizard = () => {
                       Trip Duration & Party Size
                     </h3>
 
-                    <div className="grid md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
                         <label className="block text-sm font-semibold mb-2">
                           Duration (Days)
@@ -2879,7 +2879,7 @@ const TripBuilderWizard = () => {
                         </div>
 
                         {activePackage.mealOptions?.length > 0 && (
-                          <div className="grid md:grid-cols-2 gap-3">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {activePackage.mealOptions.map((meal, index) => {
                               const selected =
                                 customizations?.selectedMealOption === meal.name;
@@ -2955,7 +2955,7 @@ const TripBuilderWizard = () => {
                       Choose your preferred transportation.
                     </p>
 
-                    <div className="grid md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {VEHICLE_OPTIONS.map((vehicle) => {
                         const selected =
                           formData.vehicleType === vehicle.type;
@@ -3143,7 +3143,7 @@ const TripBuilderWizard = () => {
                           <strong>Dedicated Specialist Guide Included</strong>
                         </div>
 
-                        <div className="grid md:grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           {activePackage.guideOptions?.map((guide, index) => {
                             const selected =
                               customizations?.selectedGuideOption === guide.name;
@@ -3228,7 +3228,7 @@ const TripBuilderWizard = () => {
                       </div>
                     </div>
 
-                    <div className="grid sm:grid-cols-2 gap-4 text-sm">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                       <div>
                         <MapPin className="inline mr-2 text-emerald-600" />
                         <strong>Starting Gateway:</strong>
@@ -3439,7 +3439,7 @@ const TripBuilderWizard = () => {
                   Confirmed Package Rules & Inclusions
                 </h3>
 
-                <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs">
                   <div className="p-3 bg-gray-50 rounded-xl">
                     <strong className="block mb-1">
                       <Car size={14} className="inline mr-1" />
@@ -3587,7 +3587,7 @@ const TripBuilderWizard = () => {
                       Available Route Corridors ({alternativeRoutes.length})
                     </strong>
 
-                    <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                       {alternativeRoutes.map((route, index) => {
                         const selected = selectedRouteIndex === index;
 
@@ -3761,7 +3761,7 @@ const TripBuilderWizard = () => {
                     your preferences.
                   </p>
                 ) : (
-                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {results.destinations.map((destination, index) => (
                       <div
                         key={destination._id}

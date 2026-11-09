@@ -221,7 +221,7 @@ const Hotels = () => {
           <h2 className="text-xl md:text-2xl font-bold mb-4">
             Guest-Favorite Partner Hotels
           </h2>
-          <div className="grid md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {popularHotels.map((h, idx) => (
               <Link
                 key={h._id}
@@ -272,7 +272,7 @@ const Hotels = () => {
           </button>
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {/* Search by Name */}
           <div className="relative sm:col-span-2">
             <Search
@@ -380,7 +380,7 @@ const Hotels = () => {
           </p>
         </div>
       ) : (
-        <div className="grid md:grid-cols-2 gap-6 items-start">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
           {filteredHotels.map((hotel) => {
             const isExpanded = selectedHotelId === hotel._id;
             const isSelectedForTrip = selectedTripHotelId === hotel._id;

@@ -232,7 +232,7 @@ const PackageDetails = () => {
         {/* Content Body */}
         <div className="p-8 md:p-12 space-y-12">
           {/* 4 Pillars Overview */}
-          <div className="grid md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="p-5 rounded-2xl bg-blue-50/60 border border-blue-100">
               <div className="flex items-center gap-2.5 text-blue-900 font-bold mb-1">
                 <Car size={18} className="text-blue-600" /> Transport
@@ -312,7 +312,7 @@ const PackageDetails = () => {
           </div>
 
           {/* Included vs Excluded Comparison */}
-          <div className="grid md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="bg-gray-50/80 p-6 rounded-2xl border border-gray-200/80">
               <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                 <span className="w-7 h-7 rounded-full bg-green-100 text-green-700 flex items-center justify-center">
@@ -365,7 +365,7 @@ const PackageDetails = () => {
                 </div>
               </div>
 
-              <div className="grid md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="md:col-span-2">
                   <label className="block text-xs font-bold text-gray-700 mb-1">Partner Hotel</label>
                   <select
@@ -518,7 +518,7 @@ const PackageDetails = () => {
                 </div>
 
                 {/* Gourmet Culinary Experience Options */}
-                <div className="grid md:grid-cols-2 gap-4 mt-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
                   {pkg.mealOptions?.map((meal, idx) => {
                     const extraLKR = meal.extraCostPerDayLKR ?? meal.extraCostPerDay ?? 0;
                     return (
@@ -573,7 +573,7 @@ const PackageDetails = () => {
                   A dedicated licensed National Guide is included. Select a specialist profile or choose a registered guide from our directory:
                 </p>
 
-                <div className="grid md:grid-cols-2 gap-4 mt-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
                   {pkg.guideOptions?.map((guide, idx) => (
                     <div
                       key={idx}
@@ -667,7 +667,7 @@ const PackageDetails = () => {
               </div>
 
               {backendPricing && (
-                <div className="grid sm:grid-cols-2 gap-2 text-xs text-blue-200 pt-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-blue-200 pt-2">
                   <div>
                     • Transport ({backendPricing.breakdown.transportation.vehicleType}):{' '}
                     <strong>

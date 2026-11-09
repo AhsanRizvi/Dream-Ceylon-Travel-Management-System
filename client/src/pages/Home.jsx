@@ -191,7 +191,7 @@ const Home = () => {
         </div>
 
         {loadingFeeds ? (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3].map((n) => (
               <div key={n} className="h-80 bg-gray-100 rounded-2xl animate-pulse" />
             ))}
@@ -205,7 +205,7 @@ const Home = () => {
             No destination views recorded yet.
           </div>
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {mostViewed.map((dest, idx) => (
               <DestinationCard
                 key={dest._id}
@@ -245,7 +245,7 @@ const Home = () => {
           </div>
 
           {loadingFeeds ? (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {[1, 2, 3].map((n) => (
                 <div key={n} className="h-80 bg-gray-200/70 rounded-2xl animate-pulse" />
               ))}
@@ -255,7 +255,7 @@ const Home = () => {
               No top-rated destinations available yet.
             </div>
           ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {topRated.map((dest, idx) => (
                 <div key={dest._id} className="flex flex-col h-full">
                   <DestinationCard
@@ -306,7 +306,7 @@ const Home = () => {
         </div>
 
         {loadingFeeds ? (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3].map((n) => (
               <div key={n} className="h-80 bg-gray-100 rounded-2xl animate-pulse" />
             ))}
@@ -316,7 +316,7 @@ const Home = () => {
             No popular destinations found.
           </div>
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {popularPlaces.map((dest) => (
               <DestinationCard
                 key={dest._id}
@@ -349,7 +349,7 @@ const Home = () => {
             </div>
 
             {/* Interactive Date, Duration & Category Filter Bar */}
-            <div className="grid sm:grid-cols-3 gap-3 w-full lg:w-auto bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/15">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full lg:w-auto bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/15">
               <div>
                 <label className="block text-[10px] font-bold uppercase tracking-wider text-emerald-200 mb-1">
                   Travel Date
@@ -414,7 +414,7 @@ const Home = () => {
 
           {/* Last-Minute Recommendation Cards */}
           {loadingLastMinute ? (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {[1, 2, 3].map((n) => (
                 <div key={n} className="h-96 bg-white/10 rounded-2xl animate-pulse" />
               ))}
@@ -424,7 +424,7 @@ const Home = () => {
               No last-minute suggestions matched the selected filters. Try choosing &ldquo;All Categories&rdquo; or increasing trip duration.
             </div>
           ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {lastMinute.map((dest) => {
                 const avail = dest.availabilityInfo || {};
                 const hasServices =
@@ -566,7 +566,7 @@ const Home = () => {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {/* Basic Tier */}
             <div className="bg-white rounded-3xl p-7 shadow-sm border border-gray-200 flex flex-col justify-between hover:shadow-lg transition">
               <div>

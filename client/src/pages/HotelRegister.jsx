@@ -255,7 +255,7 @@ const HotelRegister = () => {
               <User size={18} className="text-blue-600" /> 1. Hotel Owner & Account Information
             </h2>
 
-            <div className="grid sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold uppercase text-gray-700 mb-1">
                   Owner / Hospitality Group Name *
@@ -330,7 +330,7 @@ const HotelRegister = () => {
               <Building2 size={18} className="text-blue-600" /> 2. Property Details, Location & Photos
             </h2>
 
-            <div className="grid sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold uppercase text-gray-700 mb-1">
                   Hotel / Resort Name *
@@ -380,7 +380,7 @@ const HotelRegister = () => {
               </div>
             </div>
 
-            <div className="grid sm:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
               <div>
                 <label className="block text-xs font-bold uppercase text-gray-700 mb-1">
                   Latitude
@@ -527,7 +527,7 @@ const HotelRegister = () => {
                     )}
                   </div>
 
-                  <div className="grid sm:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
                       <label className="block text-[11px] font-bold uppercase text-gray-600 mb-1">
                         Room Type / Name *
@@ -571,7 +571,7 @@ const HotelRegister = () => {
                     </div>
                   </div>
 
-                  <div className="grid sm:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
                       <label className="block text-[11px] font-bold uppercase text-gray-600 mb-1">
                         Number of Rooms Available *

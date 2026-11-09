@@ -224,7 +224,7 @@ const GuideDetails = () => {
       </div>
 
       {/* Main Profile & Booking Grid */}
-      <div className="grid lg:grid-cols-3 gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         {/* Left 2 Columns: Full Guide Details */}
         <div className="lg:col-span-2 space-y-8">
           <div className="bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden">
@@ -296,7 +296,7 @@ const GuideDetails = () => {
               </div>
 
               {/* Service Areas & Languages */}
-              <div className="grid sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-1.5 mb-2.5">
                     <MapPin size={14} className="text-blue-600" /> Service Districts Covered
@@ -331,7 +331,7 @@ const GuideDetails = () => {
               </div>
 
               {/* Expertise & Qualifications */}
-              <div className="grid sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {guide.expertise && guide.expertise.length > 0 && (
                   <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
                     <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-1.5 mb-2.5">
@@ -370,7 +370,7 @@ const GuideDetails = () => {
               </div>
 
               {/* Contact & Availability Notes */}
-              <div className="grid sm:grid-cols-3 gap-4 pt-2 border-t border-gray-100 text-xs text-gray-700">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-gray-100 text-xs text-gray-700">
                 {guide.contactNumber && (
                   <div className="flex items-center gap-2">
                     <Phone size={15} className="text-blue-600" />

@@ -258,7 +258,7 @@ const HotelDetails = () => {
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid lg:grid-cols-3 gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         {/* Left 2 Columns: Gallery, Property Info, Room Types & Reviews */}
         <div className="lg:col-span-2 space-y-8">
           {/* Property Card & Gallery */}
@@ -383,7 +383,7 @@ const HotelDetails = () => {
               )}
 
               {/* Check-in/out, Coordinates & Contact Info */}
-              <div className="grid sm:grid-cols-3 gap-4 pt-4 border-t border-gray-100 text-xs text-gray-700">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-gray-100 text-xs text-gray-700">
                 <div className="flex items-center gap-2.5 bg-gray-50 p-3.5 rounded-2xl">
                   <Clock size={16} className="text-blue-600 flex-shrink-0" />
                   <div>

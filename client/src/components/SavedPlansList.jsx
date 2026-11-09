@@ -52,7 +52,7 @@ const SavedPlansList = ({
   }
 
   return (
-    <div className="grid md:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {savedPlans.map((plan) => {
         const startDateStr = plan.dates?.start
           ? new Date(plan.dates.start).toLocaleDateString('en-US', {

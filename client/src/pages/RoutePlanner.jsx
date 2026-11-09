@@ -530,7 +530,7 @@ const RoutePlanner = () => {
           </span>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {VEHICLE_MODES.map((v) => {
             const isSelected = vehicleType.toLowerCase() === v.type.toLowerCase();
             const IconComp = v.icon;
@@ -592,7 +592,7 @@ const RoutePlanner = () => {
       </div>
 
       {/* Main Two-Column Route Planning Workspace */}
-      <div className="grid lg:grid-cols-12 gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* LEFT COLUMN (5 cols): Origin Hub + Selected Stops Ordering + Destination Picker */}
         <div className="lg:col-span-5 space-y-6">
           {/* Starting Gateway Card */}
@@ -968,7 +968,7 @@ const RoutePlanner = () => {
                 <span className="text-[11px] text-gray-500">Click to switch active corridor on map</span>
               </div>
 
-              <div className="grid sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {alternativeRoutes.map((alt, idx) => {
                   const isSelected = selectedRouteIndex === idx;
                   return (

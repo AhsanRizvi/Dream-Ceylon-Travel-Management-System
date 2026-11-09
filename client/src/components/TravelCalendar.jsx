@@ -298,7 +298,7 @@ const TravelCalendar = ({ activeItinerary = null, onSelectPlanToEdit = null }) =
       </div>
 
       {/* Main Layout: 7-Column Calendar Grid + Selected Date Detail Drawer */}
-      <div className="grid lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left 2 Columns: Monthly Calendar Grid */}
         <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
           {/* Weekday Headers */}

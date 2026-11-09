@@ -177,7 +177,7 @@ const GuideManagementModal = ({ isOpen, onClose, onProfileUpdated, existingProfi
           ) : (
             <form id="guide-form" onSubmit={handleSubmit} className="space-y-5">
               
-              <div className="grid sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Guide Name */}
                 <div>
                   <label className="block text-xs font-bold text-gray-700 uppercase mb-1.5">
@@ -223,7 +223,7 @@ const GuideManagementModal = ({ isOpen, onClose, onProfileUpdated, existingProfi
               </div>
 
               {/* Service Areas & Languages */}
-              <div className="grid sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 uppercase mb-1.5 flex items-center gap-1">
                     <MapPin size={13} className="text-blue-600" /> Service Areas (comma separated)
@@ -254,7 +254,7 @@ const GuideManagementModal = ({ isOpen, onClose, onProfileUpdated, existingProfi
               </div>
 
               {/* Pricing & Image URL */}
-              <div className="grid sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 uppercase mb-1.5 flex items-center gap-1">
                     <DollarSign size={13} className="text-green-600" /> Daily Service Rate (USD) *

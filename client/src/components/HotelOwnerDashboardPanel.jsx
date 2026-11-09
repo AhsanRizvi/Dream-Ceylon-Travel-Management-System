@@ -440,7 +440,7 @@ const HotelOwnerDashboardPanel = () => {
 
           {editingHotel ? (
             <form onSubmit={handleSaveHotelProfile} className="p-6 space-y-4 bg-blue-50/20">
-              <div className="grid sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">
                     Hotel Name *
@@ -482,7 +482,7 @@ const HotelOwnerDashboardPanel = () => {
                 </div>
               </div>
 
-              <div className="grid sm:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                 <div className="sm:col-span-2">
                   <label className="block text-xs font-bold text-gray-700 mb-1">
                     Street Address
@@ -620,7 +620,7 @@ const HotelOwnerDashboardPanel = () => {
                 {editingRoomId ? 'Edit Room Category' : 'Add New Room Category'}
               </h4>
 
-              <div className="grid sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-[11px] font-bold uppercase text-gray-600 mb-1">
                     Room Type / Name *
@@ -665,7 +665,7 @@ const HotelOwnerDashboardPanel = () => {
                 </div>
               </div>
 
-              <div className="grid sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                 <div>
                   <label className="block text-[11px] font-bold uppercase text-gray-600 mb-1">
                     Room Count *
@@ -757,7 +757,7 @@ const HotelOwnerDashboardPanel = () => {
           )}
 
           {/* Room Cards List */}
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {(activeHotel.rooms || []).map((room) => (
               <div
                 key={room._id || room.type}

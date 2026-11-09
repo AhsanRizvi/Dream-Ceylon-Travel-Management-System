@@ -212,7 +212,7 @@ const Packages = () => {
       </div>
 
       {/* Quick Tier Comparison Summary Pill Bar */}
-      <div className="grid md:grid-cols-3 gap-4 max-w-5xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl mx-auto">
         <div className="bg-amber-50/70 border border-amber-200/80 p-4 rounded-xl flex items-start gap-3">
           <Car className="text-amber-700 mt-0.5 flex-shrink-0" size={20} />
           <div>
@@ -278,7 +278,7 @@ const Packages = () => {
           </button>
         </div>
       ) : (
-        <div className="grid md:grid-cols-3 gap-8 items-stretch">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
           {packages.map((pkg) => (
             <PackageCard
               key={pkg._id}
@@ -385,7 +385,7 @@ const Packages = () => {
           </div>
         </div>
 
-        <div className="p-6 md:p-8 grid lg:grid-cols-12 gap-8">
+        <div className="p-6 md:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Left Column: Configuration Controls (7 cols) */}
           <div className="lg:col-span-7 space-y-6">
             {/* 1. Package Tier Selection */}
@@ -419,7 +419,7 @@ const Packages = () => {
             </div>
 
             {/* 2. Duration, Travelers, Transport & Route Distance */}
-            <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">Travel Days</label>
                 <input
@@ -490,7 +490,7 @@ const Packages = () => {
                   The Basic Package does not include hotel stays. Switch to Standard or Premium to select a partner hotel and calculate accommodation costs.
                 </p>
               ) : (
-                <div className="grid sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="sm:col-span-2">
                     <label className="block text-xs font-semibold text-gray-700 mb-1">
                       Select Partner Hotel (or use Tier Estimate)

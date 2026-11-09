@@ -227,7 +227,7 @@ const GuideRegister = () => {
               <User size={18} className="text-blue-600" /> 1. Personal & Contact Details
             </h2>
 
-            <div className="grid sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold uppercase text-gray-700 mb-1">
                   Full Name *
@@ -439,7 +439,7 @@ const GuideRegister = () => {
               <Award size={18} className="text-blue-600" /> 3. Experience, Daily Rate & Qualifications
             </h2>
 
-            <div className="grid sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-bold uppercase text-gray-700 mb-1">
                   Years of Experience *

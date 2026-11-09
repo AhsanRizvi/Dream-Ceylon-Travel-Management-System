@@ -21,7 +21,7 @@ const RatingSummary = ({ stats, loading = false }) => {
 
   return (
     <div className="bg-gradient-to-br from-blue-50/70 to-indigo-50/40 p-5 rounded-2xl border border-blue-100">
-      <div className="grid sm:grid-cols-12 gap-6 items-center">
+      <div className="grid grid-cols-1 sm:grid-cols-12 gap-6 items-center">
         {/* Left column: Overall score */}
         <div className="sm:col-span-5 text-center sm:border-r border-blue-100 sm:pr-4">
           <div className="text-4xl font-extrabold text-blue-950">
