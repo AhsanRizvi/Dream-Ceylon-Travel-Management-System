@@ -418,8 +418,8 @@ const Guides = () => {
                 className="bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden transition-all hover:shadow-md"
               >
                 <div className="p-6 space-y-4">
-                  <div className="flex justify-between items-start gap-4">
-                    <div className="flex items-center gap-4">
+                  <div className="flex flex-wrap justify-between items-start gap-4">
+                    <div className="flex items-center gap-4 min-w-0">
                       <img
                         src={avatarSrc}
                         alt={displayName}
@@ -429,7 +429,7 @@ const Guides = () => {
                         }}
                         className="w-16 h-16 rounded-2xl object-cover border border-gray-200 shadow-2xs flex-shrink-0"
                       />
-                      <div>
+                      <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <Link
                             to={`/guides/${guide._id}`}
@@ -464,7 +464,7 @@ const Guides = () => {
                       </div>
                     </div>
 
-<div className="text-right flex-shrink-0">
+<div className="text-right flex-shrink-0 ml-auto">
   <span className="text-xl font-extrabold text-blue-900">
     {formatPrice(guide.dailyRateLKR || guide.dailyRate)}
   </span>

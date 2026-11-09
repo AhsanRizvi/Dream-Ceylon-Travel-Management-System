@@ -1203,7 +1203,7 @@ const Planner = () => {
             <button
               type="submit"
               disabled={loadingRecs}
-              className="px-8 py-4 bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-extrabold rounded-xl shadow-lg transition flex items-center gap-2 whitespace-nowrap text-sm"
+              className="w-full sm:w-auto justify-center text-center whitespace-normal sm:whitespace-nowrap px-6 sm:px-8 py-4 bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-extrabold rounded-xl shadow-lg transition flex items-center gap-2 text-sm"
             >
               {loadingRecs ? (
                 <>

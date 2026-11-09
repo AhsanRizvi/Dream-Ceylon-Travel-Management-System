@@ -864,7 +864,7 @@ const RoutePlanner = () => {
         </div>
 
         {/* RIGHT COLUMN (7 cols): Interactive Map + Route Details Panel + Alternatives + Legs */}
-        <div className="lg:col-span-7 space-y-6">
+        <div className="lg:col-span-7 space-y-6 min-w-0">
           {/* Route Summary Metrics Header */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="p-4 bg-white rounded-2xl border border-gray-200 shadow-sm">

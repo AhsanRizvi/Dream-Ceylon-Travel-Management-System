@@ -299,7 +299,7 @@ const Packages = () => {
           </p>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="w-full min-w-0 overflow-x-auto">
           <table className="w-full text-left border-collapse text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200 text-gray-900 font-extrabold">
