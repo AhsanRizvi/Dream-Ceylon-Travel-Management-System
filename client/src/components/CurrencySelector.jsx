@@ -47,7 +47,7 @@ const CurrencySelector = () => {
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-80 bg-white text-gray-900 rounded-2xl shadow-2xl border border-gray-200 z-50 overflow-hidden animate-fadeIn">
+        <div className="absolute right-0 mt-2 w-[min(20rem,calc(100vw-2rem))] bg-white text-gray-900 rounded-2xl shadow-2xl border border-gray-200 z-50 overflow-hidden animate-fadeIn">
           {/* Header */}
           <div className="bg-gradient-to-r from-blue-950 to-indigo-900 text-white p-4">
             <div className="flex justify-between items-center">

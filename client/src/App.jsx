@@ -28,7 +28,7 @@ function App() {
     <div className="flex flex-col min-h-screen font-sans">
       <Navbar />
 
-      <main className="flex-grow">
+      <main className="flex-grow min-w-0">
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
